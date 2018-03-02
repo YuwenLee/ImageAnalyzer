@@ -1,0 +1,126 @@
+/* ----------------------------------------------------------------------------
+ * Date : 3/2/2018
+ * Ver  : 
+ * ----------------------------------------------------------------------------
+ */
+[1]. Backup 01/14/2018 status.
+[2]. Major modifications
+     - Move the BMP files to M subdir on pressing 'm' key. 
+
+/* ----------------------------------------------------------------------------
+ * Date : 3/2/2018
+ * Ver  : 1.0.0.2
+ * ----------------------------------------------------------------------------
+ */
+[1]. Backup 01/14/2018 (v1.0.0.2) status.
+[2]. Major modificaions
+     - Draw dotted line when selecting measuring area
+     - Do not output SQL commands
+     - Re-measure on pressing 'r' key
+     - Change the output file name to measure_result_1.0.0.2.txt
+[3]. Committed changes
+        modified:   ImageAnalyzer/ImageAnalyzer.aps
+        modified:   ImageAnalyzer/ImageAnalyzer.rc
+        modified:   ImageAnalyzer/ImageAnalyzerView.cpp
+        modified:   ImageAnalyzer/ImageAnalyzerView.h
+
+/* ----------------------------------------------------------------------------
+ * Date : 3/2/2018
+ * Ver  : 1.0.0.1
+ * ----------------------------------------------------------------------------
+ */
+[1]. Backup 12/29/2017 status.
+[2]. Major modificaions
+     - Draw dotted line when selecting measuring area
+     - Refined the procedure of drawing lines
+     - Output MySQL command (to add measured result to database)
+[3]. Committed changes
+        modified:   ImageAnalyzer/ImageAnalyzerView.cpp
+        modified:   ImageAnalyzer/ImageAnalyzerView.h
+
+/* ----------------------------------------------------------------------------
+ * Date : 3/2/2018
+ * Ver  : N/A
+ * ----------------------------------------------------------------------------
+ */
+[1]. Backup 10/23/2017 status.
+[2]. Major modificaions
+     - Save measureing result on pressing 's' key
+     - Handle onDraw message
+     - Re-arranged the procedure of drawing the selected area
+     - Refined onDraw, removed onPaint
+[3]. Committed changes
+        modified:   ImageAnalyzer/ImageAnalyzerDoc.cpp
+        modified:   ImageAnalyzer/ImageAnalyzerDoc.h
+        modified:   ImageAnalyzer/ImageAnalyzerView.cpp
+        modified:   ImageAnalyzer/ImageAnalyzerView.h
+        modified:   ImageAnalyzer/MainFrm.cpp
+        modified:   ImageAnalyzer/MainFrm.h
+
+/* ----------------------------------------------------------------------------
+ * Date : 3/2/2018
+ * Ver  : N/A
+ * ----------------------------------------------------------------------------
+ */
+[1]. Backup 10/19/2017 status.
+[2]. Major modificaions
+     - Transfer JPG to BMP automatically (need ffmpeg.exe to be placed in the
+       same directory)
+     - Extract EXIF from the JPEG file (need exiftool.exe to be placed in the
+       same directory)
+     - Save the result to TXT file automatically
+     - Show the frame of the selected area
+[3]. Committed changes
+       modified:   ImageAnalyzer/CBMP.cpp
+       modified:   ImageAnalyzer/ImageAnalyzerView.cpp
+       modified:   ImageAnalyzer/ImageAnalyzerView.h
+       new file:   ImageAnalyzer/exiftool.exe
+       new file:   ImageAnalyzer/ffmpeg.exe
+
+/* ----------------------------------------------------------------------------
+ * Date : 3/2/2018
+ * Ver  : N/A
+ * ----------------------------------------------------------------------------
+ */
+[1]. Backup 10/13/2017 status.
+[2]. R, G, and B are measured by the average values within a selected area.
+[3]. Committed changes
+        modified:   ImageAnalyzer/CBMP.cpp
+        modified:   ImageAnalyzer/CBMP.h
+        modified:   ImageAnalyzer/ImageAnalyzerView.cpp
+        modified:   ImageAnalyzer/ImageAnalyzerView.h
+
+/* ----------------------------------------------------------------------------
+ * Date : 3/2/2018
+ * Ver  : N/A
+ * ----------------------------------------------------------------------------
+ */
+[1]. Initial commit
+[2]. Back up 10/10/2017 status
+[3]. Committed changes
+        new file:   ImageAnalyzer.sln
+        new file:   ImageAnalyzer/CBMP.cpp
+        new file:   ImageAnalyzer/CBMP.h
+        new file:   ImageAnalyzer/ImageAnalyzer.aps
+        new file:   ImageAnalyzer/ImageAnalyzer.cpp
+        new file:   ImageAnalyzer/ImageAnalyzer.h
+        new file:   ImageAnalyzer/ImageAnalyzer.rc
+        new file:   ImageAnalyzer/ImageAnalyzer.vcxproj
+        new file:   ImageAnalyzer/ImageAnalyzer.vcxproj.filters
+        new file:   ImageAnalyzer/ImageAnalyzer.vcxproj.user
+        new file:   ImageAnalyzer/ImageAnalyzerDoc.cpp
+        new file:   ImageAnalyzer/ImageAnalyzerDoc.h
+        new file:   ImageAnalyzer/ImageAnalyzerView.cpp
+        new file:   ImageAnalyzer/ImageAnalyzerView.h
+        new file:   ImageAnalyzer/MainFrm.cpp
+        new file:   ImageAnalyzer/MainFrm.h
+        new file:   ImageAnalyzer/ReadMe.txt
+        new file:   ImageAnalyzer/Source.cpp
+        new file:   ImageAnalyzer/res/ImageAnalyzer.ico
+        new file:   ImageAnalyzer/res/ImageAnalyzer.rc2
+        new file:   ImageAnalyzer/res/ImageAnalyzerDoc.ico
+        new file:   ImageAnalyzer/resource.h
+        new file:   ImageAnalyzer/stdafx.cpp
+        new file:   ImageAnalyzer/stdafx.h
+        new file:   ImageAnalyzer/targetver.h
+-------------------------------------------------------------------------------

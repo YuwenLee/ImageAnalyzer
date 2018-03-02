@@ -828,6 +828,24 @@ void CImageAnalyzerView::OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags)
 		Invalidate();
 	}
 
+	// Move Picture
+	if (nChar == 'M') {
+		CString cmd;
+		CString dir;
+		int     i, l;
+
+		for (i = m_strInputFileName.GetLength(); i >= 0; i--) {
+			if (m_strInputFileName[i] == '\\') break;
+		}
+		l = i + 1;
+		dir.GetBufferSetLength(l);
+		for (i = 0; i < l; i++) {
+			dir.GetBuffer()[i] = m_strInputFileName[i];
+		}
+		cmd.Format(L"move %s %s\M\\", m_strInputFileName, dir);
+		_wsystem(cmd);
+	}
+
 	CScrollView::OnKeyUp(nChar, nRepCnt, nFlags);
 }
 
