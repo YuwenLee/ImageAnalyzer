@@ -17,6 +17,7 @@ IMPLEMENT_DYNCREATE(CMainFrame, CFrameWnd)
 
 BEGIN_MESSAGE_MAP(CMainFrame, CFrameWnd)
 	ON_WM_CREATE()
+	ON_WM_ERASEBKGND()
 END_MESSAGE_MAP()
 
 static UINT indicators[] =
@@ -49,6 +50,8 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 		return -1;      // 無法建立
 	}
 	m_wndStatusBar.SetIndicators(indicators, sizeof(indicators)/sizeof(UINT));
+	m_wndStatusBar.SetPaneInfo(3, ID_INDICATOR_SCRL, SBPS_NORMAL, 90);
+	m_wndStatusBar.SetPaneText(3, _T("Hello"), TRUE);
 
 	return 0;
 }
@@ -59,6 +62,7 @@ BOOL CMainFrame::PreCreateWindow(CREATESTRUCT& cs)
 		return FALSE;
 	// TODO: 在此經由修改 CREATESTRUCT cs 
 	// 達到修改視窗類別或樣式的目的
+	cs.style = cs.style | FWS_ADDTOTITLE;
 
 	return TRUE;
 }
@@ -80,3 +84,10 @@ void CMainFrame::Dump(CDumpContext& dc) const
 
 // CMainFrame 訊息處理常式
 
+
+BOOL CMainFrame::OnEraseBkgnd(CDC* pDC)
+{
+	// TODO: 在此加入您的訊息處理常式程式碼和 (或) 呼叫預設值
+
+	return CFrameWnd::OnEraseBkgnd(pDC);
+}

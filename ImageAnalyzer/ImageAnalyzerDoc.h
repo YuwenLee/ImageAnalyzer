@@ -45,4 +45,6 @@ protected:
 	// 為搜尋處理常式設定搜尋內容的 Helper 函式
 	void SetSearchContent(const CString& value);
 #endif // SHARED_HANDLERS
+public:
+	virtual void SetTitle(LPCTSTR lpszTitle);
 };

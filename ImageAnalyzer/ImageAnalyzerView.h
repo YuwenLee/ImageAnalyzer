@@ -85,7 +85,6 @@ private:
 
 public:
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
-	afx_msg void OnPaint();
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
 	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
@@ -94,6 +93,12 @@ protected:
 	void SaveResult(CString strFileName);
 	CString GenerateBMP(CString strFileName);
 	CString getValue(CString strFilename, CString strTag);
+public:
+	afx_msg void OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags);
+	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
+	afx_msg void OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
+protected:
+	int DrawRect(CDC *pDC, CPoint p1, CPoint p2);
 };
 
 #ifndef _DEBUG  // ImageAnalyzerView.cpp ¤¤ªº°»¿ùª©¥»

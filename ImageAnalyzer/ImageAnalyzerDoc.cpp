@@ -135,3 +135,11 @@ void CImageAnalyzerDoc::Dump(CDumpContext& dc) const
 
 
 // CImageAnalyzerDoc 命令
+
+
+void CImageAnalyzerDoc::SetTitle(LPCTSTR lpszTitle)
+{
+	// TODO: 在此加入特定的程式碼和 (或) 呼叫基底類別
+
+	CDocument::SetTitle(lpszTitle);
+}

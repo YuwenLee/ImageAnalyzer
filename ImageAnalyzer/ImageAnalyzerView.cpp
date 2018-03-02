@@ -24,11 +24,13 @@ IMPLEMENT_DYNCREATE(CImageAnalyzerView, CScrollView)
 BEGIN_MESSAGE_MAP(CImageAnalyzerView, CScrollView)
 	ON_COMMAND(ID_FILE_OPEN, &CImageAnalyzerView::OnFileOpen)
 	ON_WM_CREATE()
-	ON_WM_PAINT()
 	ON_WM_SIZE()
 	ON_WM_MOUSEMOVE()
 	ON_WM_LBUTTONDOWN()
 	ON_WM_LBUTTONUP()
+	ON_WM_KEYUP()
+	ON_WM_HSCROLL()
+	ON_WM_VSCROLL()
 END_MESSAGE_MAP()
 
 // CImageAnalyzerView 建構/解構
@@ -75,33 +77,37 @@ void CImageAnalyzerView::OnDraw(CDC* pDC)
 		return;
 
 	// TODO: 在此加入原生資料的描繪程式碼
-	CClientDC      clientDC(this);
-	//int            rgbLine = m_bmp.GetWidth() * 3;
-	//unsigned char *pRGB = m_bmp.GetRGB();
-	//int            i, j;
+	CDC            dcMem;
 	CBitmap       *p_bmp;
+	CString        str;
+	CPoint         point;
+	int            i;
 
-	pDC->CreateCompatibleDC(&clientDC);
-	p_bmp = pDC->SelectObject(&m_bmpGDI);
-	clientDC.BitBlt(0, 0, m_bmp.GetWidth(), m_bmp.GetHeight(), pDC, 0, 0, SRCCOPY);
-	clientDC.SelectObject(p_bmp);
+	point = GetScrollPosition();
 
+	// Load BMP file to the compatible DC and copy the content to the paint DC.
+	dcMem.CreateCompatibleDC(pDC);
+	p_bmp = dcMem.SelectObject(&m_bmpGDI);
+	pDC->BitBlt(point.x, point.y, m_nViewWidth, m_nViewHeight, &dcMem, point.x, point.y, SRCCOPY);
+	dcMem.SelectObject(p_bmp);
+
+	for (i = 0; i < m_MeasureCnt; i++) {
+		CPoint p1, p2;
+		p1.x = m_RectMeasureRGB[i].left;
+		p1.y = m_RectMeasureRGB[i].top;
+		p2.x = m_RectMeasureRGB[i].right;
+		p2.y = m_RectMeasureRGB[i].bottom;
+		DrawRect(pDC, p1, p2);
+	}
 	/*
-	for (j = 0; j < m_nBMPHeight; j++)
-	{
-		unsigned char *ptr;
-		ptr = pRGB + rgbLine*j;
-		COLORREF color_ref;
-
-		for (i = 0; i < m_nBMPWidth; i++)
-        {
-			color_ref = *(ptr + i*3)<<16 | *(ptr + i*3 + 1) << 8 | *(ptr + i*3 + 2);
-			pDC->SetPixel(i, j, COLORREF(color_ref));
-			if (i > client_w) break;
-		}
-		if (j > client_h) break;
+	for (i = 0; i < 6; i++) {
+		str.Format(_T("[%d] (%d, %d, %d)"), i, m_R[i], m_G[i], m_B[i]);
+		pDC->TextOut(point.x + 5, point.y + 5 + i * 18, str);
 	}
 	*/
+	
+	//str.Format(L"%d, %d : %d, %d, %d", m_nMeasureX, m_nMeasureY, m_nAVRGr, m_nAVRGg, m_nAVRGb);
+	//dc.TextOutW(10, 10, str);
 }
 
 void CImageAnalyzerView::OnInitialUpdate()
@@ -162,6 +168,7 @@ void CImageAnalyzerView::OnFileOpen()
 		//
 		if (m_strResultFile.GetLength()) {
 			SaveResult(m_strResultFile);
+			m_strResultFile.Empty();
 		}
 
 		//
@@ -257,60 +264,6 @@ int CImageAnalyzerView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	return 0;
 }
 
-
-void CImageAnalyzerView::OnPaint()
-{
-	CPaintDC dc(this); // device context for painting
-					   // TODO: 在此加入您的訊息處理常式程式碼
-					   // 不要呼叫圖片訊息的 CScrollView::OnPaint()
-
-	CDC            dcMem;
-	CBitmap       *p_bmp;
-	CString        str;
-	CPoint         point;
-
-	point = GetScrollPosition();
-
-	// Load BMP file to the compatible DC and copy the content to the paint DC.
-	dcMem.CreateCompatibleDC(&dc);
-	p_bmp = dcMem.SelectObject(&m_bmpGDI);
-
-	if (1) {
-		CPen pen1(PS_SOLID, 1, RGB(255, 0, 0));
-		CPen pen2(PS_SOLID, 1, RGB(0, 255, 0));
-		CPen pen3(PS_SOLID, 1, RGB(0, 0, 255));
-		CPen *pOldPen;
-
-		switch (m_MeasureCnt % 3)
-		{
-			case 0:
-				pOldPen = dcMem.SelectObject(&pen1);
-				break;
-			case 1:
-				pOldPen = dcMem.SelectObject(&pen2);
-				break;
-			case 2:
-				pOldPen = dcMem.SelectObject(&pen3);
-				break;
-		}
-		
-		dcMem.MoveTo(m_MeasurePoint1);
-		dcMem.LineTo(m_MeasurePoint1.x, m_MeasurePoint2.y);
-		dcMem.LineTo(m_MeasurePoint2);
-		dcMem.LineTo(m_MeasurePoint2.x, m_MeasurePoint1.y);
-		dcMem.LineTo(m_MeasurePoint1);
-
-		dcMem.SelectObject(pOldPen);
-	}
-
-	dc.BitBlt(0, 0, m_nViewWidth, m_nViewHeight, &dcMem, point.x, point.y, SRCCOPY);
-	dcMem.SelectObject(p_bmp);
-
-	//str.Format(L"%d, %d : %d, %d, %d", m_nMeasureX, m_nMeasureY, m_nAVRGr, m_nAVRGg, m_nAVRGb);
-	//dc.TextOutW(10, 10, str);
-}
-
-
 void CImageAnalyzerView::OnSize(UINT nType, int cx, int cy)
 {
 	CScrollView::OnSize(nType, cx, cy);
@@ -328,6 +281,49 @@ void CImageAnalyzerView::OnMouseMove(UINT nFlags, CPoint point)
 	ScrPoint = GetScrollPosition();
 	m_nMeasureX = ScrPoint.x + point.x;
 	m_nMeasureY = ScrPoint.y + point.y;
+
+	if (m_bGotButtonDown) {
+		CClientDC dc(this);
+		CRect     rect;
+		
+		rect.top    = m_MeasurePoint1.y;
+		rect.bottom = m_MeasurePoint1.y+1;
+		rect.left   = m_MeasurePoint1.x;
+		rect.right  = m_MeasurePoint2.x;
+		InvalidateRect(rect);
+
+		rect.top    = m_MeasurePoint1.y;
+		rect.bottom = m_MeasurePoint2.y;
+		rect.left   = m_MeasurePoint2.x;
+		rect.right  = m_MeasurePoint2.x+1;
+		InvalidateRect(rect);
+
+		rect.top     = m_MeasurePoint2.y;
+		rect.bottom  = m_MeasurePoint2.y+1;
+		rect.left    = m_MeasurePoint1.x;
+		rect.right   = m_MeasurePoint2.x;
+		InvalidateRect(rect);
+
+		rect.top    = m_MeasurePoint1.y;
+		rect.bottom = m_MeasurePoint2.y;
+		rect.left   = m_MeasurePoint1.x;;
+		rect.right  = m_MeasurePoint1.x+1;
+		InvalidateRect(rect);
+
+		dc.MoveTo(m_MeasurePoint1);
+		m_MeasurePoint2.x = m_MeasurePoint1.x;
+		m_MeasurePoint2.y = point.y;
+		dc.LineTo(m_MeasurePoint2);
+		m_MeasurePoint2.x = point.x;
+		dc.LineTo(m_MeasurePoint2);
+		m_MeasurePoint2.y = m_MeasurePoint1.y;
+		dc.LineTo(m_MeasurePoint2);
+		m_MeasurePoint2.x = m_MeasurePoint1.x;
+		dc.LineTo(m_MeasurePoint2);
+
+		m_MeasurePoint2 = point;
+	}
+
 
 	CScrollView::OnMouseMove(nFlags, point);
 }
@@ -353,11 +349,11 @@ void CImageAnalyzerView::OnLButtonUp(UINT nFlags, CPoint point)
 		return;
 	}
 	m_bGotButtonDown = FALSE;
+	Invalidate();
 
-	if (m_MeasureCnt == 6) {
+	if (m_MeasurePoint1 == point) {
 		return;
 	}
-
 	m_MeasurePoint2 = point;
 
 	nWidth  = m_MeasurePoint2.x - m_MeasurePoint1.x;
@@ -511,6 +507,14 @@ void CImageAnalyzerView::SaveResult(CString strFilename)
 		}
 		szbuf[i] = '\0';
 		sscanf(szbuf, "%d:%d:%d %d:%d:%d", &m_nYear, &m_nMonth, &m_nDay, &m_nHour, &m_nMin, &m_nSec);
+
+		str.Format(_T("[Filename]\n%s\n[Date]\n%d-%d-%d-%d-%d-%d\n"), m_strInputFileName, m_nYear, m_nMonth, m_nDay, m_nHour, m_nMin, m_nSec);
+		file.WriteString(str);
+		str.Format(_T("[Brightness]\nExpo\tISO\tF#\n"));
+		file.WriteString(str);
+		str.Format(_T("1/%d \t%d \t%d.%d\n"), m_nExposure, m_nISO, m_nFnum_n, m_nFnum_f);
+		file.WriteString(str);
+		break;
 	} while (0);
 
 	{
@@ -518,7 +522,7 @@ void CImageAnalyzerView::SaveResult(CString strFilename)
 		CString str2;
 		int     i;
 
-		file.WriteString(L"[GrayPatches_Measure]\n");
+		file.WriteString(L"[GrayPatches]\n");
 		str1.Format(L" \t1 \t2 \t3 \t4 \t5 \t6\n");
 		file.WriteString(str1);
 
@@ -559,7 +563,7 @@ void CImageAnalyzerView::SaveResult(CString strFilename)
 		str1 += "\n";
 		file.WriteString(str1);
 
-		file.WriteString(L"[GrayPatches]\n");
+		file.WriteString(L"[GrayPatch_Measurement]\n");
 		str1.Format(L"\t19 \t20 \t21 \t22 \t23 \t24\n");
 		file.WriteString(str1);
 
@@ -568,6 +572,14 @@ void CImageAnalyzerView::SaveResult(CString strFilename)
 		str1.Format(L"G \t%d \t%d \t%d \t%d \t%d \t%d\n", m_G[0], m_G[1], m_G[2], m_G[3], m_G[4], m_G[5]);
 		file.WriteString(str1);
 		str1.Format(L"B \t%d \t%d \t%d \t%d \t%d \t%d\n", m_B[0], m_B[1], m_B[2], m_B[3], m_B[4], m_B[5]);
+		file.WriteString(str1);
+		str1.Format(L"L \t%.f \t%.f \t%.f \t%.f \t%.f \t%.f\n",
+			pow((m_R[0]*m_R[0]*0.299) + (m_G[0]*m_G[0]*0.587) + (m_B[0]*m_B[0]*0.114), 0.5),
+			pow((m_R[1]*m_R[1]*0.299) + (m_G[1]*m_G[1]*0.587) + (m_B[1]*m_B[1]*0.114), 0.5),
+			pow((m_R[2]*m_R[2]*0.299) + (m_G[2]*m_G[2]*0.587) + (m_B[2]*m_B[2]*0.114), 0.5),
+			pow((m_R[3]*m_R[3]*0.299) + (m_G[3]*m_G[3]*0.587) + (m_B[3]*m_B[3]*0.114), 0.5),
+			pow((m_R[4]*m_R[4]*0.299) + (m_G[4]*m_G[4]*0.587) + (m_B[4]*m_B[4]*0.114), 0.5),
+			pow((m_R[5]*m_R[5]*0.299) + (m_G[5]*m_G[5]*0.587) + (m_B[5]*m_B[5]*0.114), 0.5) );
 		file.WriteString(str1);
 	}
 
@@ -598,6 +610,7 @@ CString CImageAnalyzerView::GenerateBMP(CString strFileName)
 	strBMPFileName.GetBuffer()[++i] = 'm';
 	strBMPFileName.GetBuffer()[++i] = 'p';
 
+	// ffmpeg -i IMG20170712151728.jpg -frames 1 -pix_fmt bgr24 -y IMG20170712151728.bmp
 	strCmd.Format(_T(".\\ffmpeg -i "));
 	strCmd += strFileName;
 	strCmd += _T(" -vframes 1 -pix_fmt bgr24 -y ");
@@ -664,4 +677,71 @@ CString CImageAnalyzerView::getValue(CString strFilename, CString strTag)
      
 	file.Close();
     return strVal;
+}
+
+
+void CImageAnalyzerView::OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags)
+{
+	// TODO: 在此加入您的訊息處理常式程式碼和 (或) 呼叫預設值
+	if (nChar == 'S') {
+		//
+		// Save last time result
+		//
+		if (m_strResultFile.GetLength()) {
+			SaveResult(m_strResultFile);
+			m_strResultFile.Empty();
+		}
+		MessageBox(L"The Result has been saved.", L"OK", 0);
+
+	}
+
+	CScrollView::OnKeyUp(nChar, nRepCnt, nFlags);
+}
+
+
+void CImageAnalyzerView::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
+{
+	// TODO: 在此加入您的訊息處理常式程式碼和 (或) 呼叫預設值
+	//Invalidate();
+	CScrollView::OnHScroll(nSBCode, nPos, pScrollBar);
+}
+
+
+void CImageAnalyzerView::OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
+{
+	// TODO: 在此加入您的訊息處理常式程式碼和 (或) 呼叫預設值
+	//Invalidate();
+	CScrollView::OnVScroll(nSBCode, nPos, pScrollBar);
+}
+
+
+int CImageAnalyzerView::DrawRect(CDC *pDC, CPoint p1, CPoint p2)
+{
+	int top, bottom, right, left;
+
+	if (p1.y < p2.y) {
+		top = p1.y;
+		bottom = p2.y;
+	}
+	else {
+		top = p2.y;
+		bottom = p1.y;
+	}
+
+	if (p1.x < p2.x) {
+		left = p1.x;
+		right = p2.x;
+	}
+	else {
+		left = p2.x;
+		right = p1.x;
+	}
+
+	pDC->MoveTo(left, top);
+	pDC->LineTo(right, top);
+	pDC->LineTo(right, bottom);
+	pDC->LineTo(left,  bottom);
+	pDC->LineTo(left,  top);
+
+	return 0;
 }
