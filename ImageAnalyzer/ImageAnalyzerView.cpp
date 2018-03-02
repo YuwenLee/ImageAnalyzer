@@ -52,7 +52,13 @@ CImageAnalyzerView::CImageAnalyzerView()
 	, m_MeasureCnt(0)
 {
 	// TODO: 在此加入建構程式碼
-
+	int i;
+	for (i = 0; i < 6; i++) {
+		m_B[i] = 0;
+		m_G[i] = 0;
+		m_R[i] = 0;
+		m_L[i] = 0.000001;
+	}
 }
 
 CImageAnalyzerView::~CImageAnalyzerView()
@@ -166,18 +172,13 @@ void CImageAnalyzerView::OnFileOpen()
 	if (IDOK != dlg.DoModal()) {
 		return;
 	} else {
-
-		//
-		// Save last time result
-		//
-		if (m_strResultFile.GetLength()) {
-			SaveResult(m_strResultFile);
-			m_strResultFile.Empty();
-		}
-
 		//
 		// Clean Up
 		//
+		if (m_strResultFile.GetLength()) {
+			m_strResultFile.Empty();
+		}
+
 		m_MeasureCnt = 0;
 		for (i = 0; i < 6; i++) {
 			m_R[i] = 0;
@@ -350,68 +351,75 @@ void CImageAnalyzerView::OnLButtonUp(UINT nFlags, CPoint point)
 		m_R[m_MeasureCnt] = m_nAVRGr / 1000;
 		m_G[m_MeasureCnt] = m_nAVRGg / 1000;
 		m_B[m_MeasureCnt] = m_nAVRGb / 1000;
+
+		m_L[m_MeasureCnt] = pow( (m_R[m_MeasureCnt]*m_R[m_MeasureCnt]*0.299) + 
+			                     (m_G[m_MeasureCnt]*m_G[m_MeasureCnt]*0.587) + 
+			                     (m_B[m_MeasureCnt]*m_B[m_MeasureCnt]*0.114), 
+			                     0.5 );
 		m_MeasureCnt++;
 	}
 
 	/*
-	 * Output 1
+	 * Output 1 (measure_result.txt)
 	 */
-	if(m_MeasureCnt == 6)
-	{
-		int i;
-		FILE *fp;
+	if (0) {
+		if (m_MeasureCnt == 6)
+		{
+			int i;
+			FILE *fp;
 
-		fp = fopen("measure_result.txt", "r+t");
-		if(!fp)	fp = fopen("measure_result.txt", "wt");
-		fseek(fp, 0, SEEK_END);
+			fp = fopen("measure_result.txt", "r+t");
+			if (!fp)	fp = fopen("measure_result.txt", "wt");
+			fseek(fp, 0, SEEK_END);
 
-		fprintf(fp, "\n");
-		for (i = 0; i < m_strBMPFileName.GetLength(); i++) {
-			fprintf(fp, "%c", m_strBMPFileName[i]);
+			fprintf(fp, "\n");
+			for (i = 0; i < m_strBMPFileName.GetLength(); i++) {
+				fprintf(fp, "%c", m_strBMPFileName[i]);
+			}
+			fprintf(fp, "\nR");
+			for (i = 0; i < 6; i++) {
+				fprintf(fp, "\t%d", m_R[i]);
+			}
+			fprintf(fp, "\nG");
+			for (i = 0; i < 6; i++) {
+				fprintf(fp, "\t%d", m_G[i]);
+			}
+			fprintf(fp, "\nB");
+			for (i = 0; i < 6; i++) {
+				fprintf(fp, "\t%d", m_B[i]);
+			}
+			fclose(fp);
+			fp = NULL;
 		}
-		fprintf(fp, "\nR");
-		for (i = 0; i < 6; i++) {
-			fprintf(fp, "\t%d", m_R[i]);
-		}
-		fprintf(fp, "\nG");
-		for (i = 0; i < 6; i++) {
-			fprintf(fp, "\t%d", m_G[i]);
-		}
-		fprintf(fp, "\nB");
-		for (i = 0; i < 6; i++) {
-			fprintf(fp, "\t%d", m_B[i]);
-		}
-		fclose(fp);
-		fp = NULL;
 	}
-
 	/*
 	 * Output 2 (for MySQL)
 	 */
-	if (m_MeasureCnt == 6) {
-		int i;
-		FILE *fp;
+	if (0) {
+		if (m_MeasureCnt == 6) {
+			int i;
+			FILE *fp;
 
-		fp = fopen("measure_result_sql.txt", "r+t");
-		if (!fp)	fp = fopen("measure_result_sql.txt", "wt");
-		fseek(fp, 0, SEEK_END);
+			fp = fopen("measure_result_sql.txt", "r+t");
+			if (!fp)	fp = fopen("measure_result_sql.txt", "wt");
+			fseek(fp, 0, SEEK_END);
 
-		fprintf(fp, "\n");
-		for (i = 0; i < m_strBMPFileName.GetLength(); i++) {
-			if (m_strBMPFileName[i] == '\n') break;
-			fprintf(fp, "%c", m_strBMPFileName[i]);
+			fprintf(fp, "\n");
+			for (i = 0; i < m_strInputFileName.GetLength(); i++) {
+				if (m_strInputFileName[i] == '\n') break;
+				fprintf(fp, "%c", m_strInputFileName[i]);
+			}
+			fprintf(fp, "\t");
+			//fprintf(fp, "\nR");
+			for (i = 0; i < 6; i++) {
+				fprintf(fp, "\t%d", m_R[i]);
+				fprintf(fp, "\t%d", m_G[i]);
+				fprintf(fp, "\t%d", m_B[i]);
+			}
+			fclose(fp);
+			fp = NULL;
 		}
-		fprintf(fp, "\t");
-		//fprintf(fp, "\nR");
-		for (i = 0; i < 6; i++) {
-			fprintf(fp, "\t%d", m_R[i]);
-			fprintf(fp, "\t%d", m_G[i]);
-			fprintf(fp, "\t%d", m_B[i]);
-		}
-		fclose(fp);
-		fp = NULL;
 	}
-
 	//Invalidate();
 
 	CScrollView::OnLButtonUp(nFlags, point);
@@ -433,7 +441,7 @@ void CImageAnalyzerView::SaveResult(CString strFilename)
 
 	file.Seek(0, CStdioFile::end);
 
-	// EXIF
+	// Parse EXIF
 	do {
 		CString    str;
 		char       szbuf[1024];
@@ -455,7 +463,7 @@ void CImageAnalyzerView::SaveResult(CString strFilename)
 		szbuf[i] = 0;
 		system(szbuf);
 
-	    str = getValue(_T("exif.txt"), _T("Exposure Time"));
+		str = getValue(_T("exif.txt"), _T("Exposure Time"));
 		j = str.GetLength();
 		for (i = 0; i < j; i++) {
 			if (str[i] == '/') {
@@ -477,7 +485,7 @@ void CImageAnalyzerView::SaveResult(CString strFilename)
 		j = str.GetLength();
 		for (i = 0; i < j; i++) {
 			szbuf[i] = (char)(str[i]);
-			if ((str[i]== ' ') || (str[i]=='\n') || (str[i]=='\0')) {
+			if ((str[i] == ' ') || (str[i] == '\n') || (str[i] == '\0')) {
 				break;
 			}
 		}
@@ -496,7 +504,7 @@ void CImageAnalyzerView::SaveResult(CString strFilename)
 		m_nFnum_n = atoi(szbuf);
 		for (k = 0; i < j; i++, k++) {
 			szbuf[k] = (char)(str[i]);
-			if ((str[i] == ' ') || (str[i] == '\n') || (str[i]=='\0')) {
+			if ((str[i] == ' ') || (str[i] == '\n') || (str[i] == '\0')) {
 				break;
 			}
 		}
@@ -513,15 +521,53 @@ void CImageAnalyzerView::SaveResult(CString strFilename)
 		}
 		szbuf[i] = '\0';
 		sscanf(szbuf, "%d:%d:%d %d:%d:%d", &m_nYear, &m_nMonth, &m_nDay, &m_nHour, &m_nMin, &m_nSec);
+		break;
+	} while (0);
 
+	//
+	// Output (ImageName.txt)
+	//
+	{
+		CString str;
 		str.Format(_T("[Filename]\n%s\n[Date]\n%d-%d-%d-%d-%d-%d\n"), m_strInputFileName, m_nYear, m_nMonth, m_nDay, m_nHour, m_nMin, m_nSec);
 		file.WriteString(str);
 		str.Format(_T("[Brightness]\nExpo\tISO\tF#\n"));
 		file.WriteString(str);
 		str.Format(_T("1/%d \t%d \t%d.%d\n"), m_nExposure, m_nISO, m_nFnum_n, m_nFnum_f);
 		file.WriteString(str);
-		break;
-	} while (0);
+	}
+
+	//
+	// Output (measure_result.txt)
+	//
+	{
+		int i;
+		FILE *fp;
+
+		fp = fopen("measure_result_1.0.0.2.txt", "r+t");
+		if (!fp)	fp = fopen("measure_result_1.0.0.2.txt", "wt");
+		fseek(fp, 0, SEEK_END);
+
+		fprintf(fp, "\n");
+		for (i = 0; i < m_strBMPFileName.GetLength(); i++) {
+			fprintf(fp, "%c", m_strBMPFileName[i]);
+		}
+
+		for (i = 0; i < 6; i++) {
+			fprintf(fp, "\t%d", m_R[i]);
+			fprintf(fp, "\t%d", m_G[i]);
+			fprintf(fp, "\t%d", m_B[i]);
+		}
+
+		for (i = 0; i < 6; i++) {
+			fprintf(fp, "\t%.f", m_L[i]);
+		}
+
+		fprintf(fp, "\t%d\t%d\t%d\t%d", m_nExposure, m_nISO, m_nFnum_n, m_nFnum_f);
+
+		fclose(fp);
+		fp = NULL;
+	}
 
 	{
 		CString str1;
@@ -579,18 +625,83 @@ void CImageAnalyzerView::SaveResult(CString strFilename)
 		file.WriteString(str1);
 		str1.Format(L"B \t%d \t%d \t%d \t%d \t%d \t%d\n", m_B[0], m_B[1], m_B[2], m_B[3], m_B[4], m_B[5]);
 		file.WriteString(str1);
-		str1.Format(L"L \t%.f \t%.f \t%.f \t%.f \t%.f \t%.f\n",
-			pow((m_R[0]*m_R[0]*0.299) + (m_G[0]*m_G[0]*0.587) + (m_B[0]*m_B[0]*0.114), 0.5),
-			pow((m_R[1]*m_R[1]*0.299) + (m_G[1]*m_G[1]*0.587) + (m_B[1]*m_B[1]*0.114), 0.5),
-			pow((m_R[2]*m_R[2]*0.299) + (m_G[2]*m_G[2]*0.587) + (m_B[2]*m_B[2]*0.114), 0.5),
-			pow((m_R[3]*m_R[3]*0.299) + (m_G[3]*m_G[3]*0.587) + (m_B[3]*m_B[3]*0.114), 0.5),
-			pow((m_R[4]*m_R[4]*0.299) + (m_G[4]*m_G[4]*0.587) + (m_B[4]*m_B[4]*0.114), 0.5),
-			pow((m_R[5]*m_R[5]*0.299) + (m_G[5]*m_G[5]*0.587) + (m_B[5]*m_B[5]*0.114), 0.5) );
+		str1.Format(L"L \t%.f \t%.f \t%.f \t%.f \t%.f \t%.f\n", m_L[0], m_L[1], m_L[2], m_L[3], m_L[4], m_L[5]);
 		file.WriteString(str1);
 	}
 
 	file.Close();
 
+	/*
+	 * Peform SQL Commands
+	 */
+	if(0) {
+		CStdioFile sql_script;
+		CString    strInputFileName;
+		CString    sql_script_name(L"D:\\Sql_Script.sql");
+		CString    strBegin("\
+USE YWLEE;\n\
+INSERT INTO measure_result(\n\
+`Picture_Name`, \n\
+`R19`, `G19`, `B19`, `R20`, `G20`, `B20`, `R21`, \n\
+`G21`, `B21`, `R22`, `G22`, `B22`, `R23`, `G23`, \n\
+`B23`, `R24`, `G24`, `B24`, \n\
+`L19`, `L20`, `L21`, `L22`, `L23`, `L24`, \n\
+`Target_Image_ID`) \n\
+VALUES(\n");
+		CString strValues;
+		CString strEnd("0 ) ; ");
+		CString strCmd;
+		int     i;
+
+		strValues.Empty();
+		strInputFileName = m_strInputFileName;
+		for (i = 0; i < strInputFileName.GetLength(); i++) {
+			if (strInputFileName.GetBuffer()[i] == '\\') {
+				strInputFileName.GetBuffer()[i] = '\/';
+			}
+		}
+		strValues.Format(L"'%s', ", strInputFileName);
+
+		for (i = 0; i < 6; i++) {
+			CString str;
+			str.Format(L"%d, %d, %d, ", m_R[i], m_G[i], m_B[i]);
+			strValues += str;
+		}
+
+		for (i = 0; i < 6; i++) {
+			CString str;
+			int     nLight;
+			nLight = pow((m_R[i] * m_R[i] * 0.299) + (m_G[i] * m_G[i] * 0.587) + (m_B[i] * m_B[i] * 0.114), 0.5);
+			str.Format(L"%d, ", nLight);
+			strValues += str;
+		}
+
+		//MessageBox(L"Open", 0);
+		if (!sql_script.Open(sql_script_name, CStdioFile::modeReadWrite | CStdioFile::typeText)) {
+			//MessageBox(L"File does not exist", 0);
+			// The file does not exist. Create it.
+			nOK = sql_script.Open(sql_script_name, CStdioFile::modeCreate | CStdioFile::modeReadWrite | CStdioFile::typeText);
+			if (!nOK) {
+				// Failed to create the file
+				MessageBox(L"Fail", 0);
+				return;
+			}
+		}
+
+		sql_script.SetLength(0);
+		sql_script.Seek(0, CStdioFile::begin);
+		sql_script.WriteString(strBegin);
+		sql_script.WriteString(strValues);
+		sql_script.WriteString(strEnd);
+
+		sql_script.Close();
+
+		
+		strCmd = L"\"c:\\Program Files\\MySQL\\MySQL Server 5.7\\bin\\mysql.exe\" -h127.0.0.1 -uroot -p70256 < ";
+		strCmd += sql_script_name;
+
+		_wsystem(strCmd);
+	}
 	return;
 }
 
@@ -703,6 +814,18 @@ void CImageAnalyzerView::OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags)
 		}
 		MessageBox(L"The Result has been saved.", L"OK", 0);
 
+	}
+
+	if (nChar == 'R') {
+		// Re-measure
+		int i;
+		m_MeasureCnt = 0;
+		for (i = 0; i < 6; i++) {
+			m_R[i] = 0;
+			m_G[i] = 0;
+			m_B[i] = 0;
+		}
+		Invalidate();
 	}
 
 	CScrollView::OnKeyUp(nChar, nRepCnt, nFlags);

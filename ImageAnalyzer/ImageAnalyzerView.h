@@ -81,6 +81,7 @@ private:
 	int    m_R[6];
 	int    m_G[6];
 	int    m_B[6];
+	float  m_L[6];
 	CRect  m_RectMeasureRGB[6];
 
 public:

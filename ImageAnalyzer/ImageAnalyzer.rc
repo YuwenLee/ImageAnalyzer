@@ -156,8 +156,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,0,0,1
- PRODUCTVERSION 1,0,0,1
+ FILEVERSION 1,0,0,2
+ PRODUCTVERSION 1,0,0,2
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -170,16 +170,16 @@ VS_VERSION_INFO VERSIONINFO
 BEGIN
     BLOCK "StringFileInfo"
     BEGIN
-        BLOCK "040404B0"
+        BLOCK "040404b0"
         BEGIN
-            VALUE "CompanyName", "TODO: <公司名稱>"
+            VALUE "CompanyName", "wiscon"
             VALUE "FileDescription", "ImageAnalyzer"
-            VALUE "FileVersion", "1.0.0.1"
+            VALUE "FileVersion", "1.0.0.2"
             VALUE "InternalName", "ImageAnalyzer.exe"
-            VALUE "LegalCopyright", "TODO: (c) <公司名稱>.  著作權所有，並保留一切權利。"
+            VALUE "LegalCopyright", "(c) wiscon.  著作權所有，並保留一切權利。"
             VALUE "OriginalFilename", "ImageAnalyzer.exe"
-            VALUE "ProductName", "TODO: <產品名稱>"
-            VALUE "ProductVersion", "1.0.0.1"
+            VALUE "ProductName", "ImageAnalyzer"
+            VALUE "ProductVersion", "1.0.0.2"
         END
     END
     BLOCK "VarFileInfo"
