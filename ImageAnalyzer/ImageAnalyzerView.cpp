@@ -81,6 +81,8 @@ void CImageAnalyzerView::OnDraw(CDC* pDC)
 	CBitmap       *p_bmp;
 	CString        str;
 	CPoint         point;
+	CPen          *pPen;
+	CPen           pen(0, 1, COLORREF(0x00FF0000));
 	int            i;
 
 	point = GetScrollPosition();
@@ -91,6 +93,7 @@ void CImageAnalyzerView::OnDraw(CDC* pDC)
 	pDC->BitBlt(point.x, point.y, m_nViewWidth, m_nViewHeight, &dcMem, point.x, point.y, SRCCOPY);
 	dcMem.SelectObject(p_bmp);
 
+	pPen = pDC->SelectObject(&pen);
 	for (i = 0; i < m_MeasureCnt; i++) {
 		CPoint p1, p2;
 		p1.x = m_RectMeasureRGB[i].left;
@@ -99,6 +102,7 @@ void CImageAnalyzerView::OnDraw(CDC* pDC)
 		p2.y = m_RectMeasureRGB[i].bottom;
 		DrawRect(pDC, p1, p2);
 	}
+	pDC->SelectObject(pPen);
 	/*
 	for (i = 0; i < 6; i++) {
 		str.Format(_T("[%d] (%d, %d, %d)"), i, m_R[i], m_G[i], m_B[i]);
@@ -197,7 +201,6 @@ void CImageAnalyzerView::OnFileOpen()
 	//
 	// Extract EXIF
 	//
-
 	bOK = m_FileBMP.Open(m_strBMPFileName, CFile::modeRead | CFile::typeBinary);
 	if (!bOK) {
 		return;
@@ -284,42 +287,13 @@ void CImageAnalyzerView::OnMouseMove(UINT nFlags, CPoint point)
 
 	if (m_bGotButtonDown) {
 		CClientDC dc(this);
-		CRect     rect;
+		CPen      pen(2, 1, COLORREF(0x00FFFF00));
+		CPen     *pPen;
 		
-		rect.top    = m_MeasurePoint1.y;
-		rect.bottom = m_MeasurePoint1.y+1;
-		rect.left   = m_MeasurePoint1.x;
-		rect.right  = m_MeasurePoint2.x;
-		InvalidateRect(rect);
-
-		rect.top    = m_MeasurePoint1.y;
-		rect.bottom = m_MeasurePoint2.y;
-		rect.left   = m_MeasurePoint2.x;
-		rect.right  = m_MeasurePoint2.x+1;
-		InvalidateRect(rect);
-
-		rect.top     = m_MeasurePoint2.y;
-		rect.bottom  = m_MeasurePoint2.y+1;
-		rect.left    = m_MeasurePoint1.x;
-		rect.right   = m_MeasurePoint2.x;
-		InvalidateRect(rect);
-
-		rect.top    = m_MeasurePoint1.y;
-		rect.bottom = m_MeasurePoint2.y;
-		rect.left   = m_MeasurePoint1.x;;
-		rect.right  = m_MeasurePoint1.x+1;
-		InvalidateRect(rect);
-
-		dc.MoveTo(m_MeasurePoint1);
-		m_MeasurePoint2.x = m_MeasurePoint1.x;
-		m_MeasurePoint2.y = point.y;
-		dc.LineTo(m_MeasurePoint2);
-		m_MeasurePoint2.x = point.x;
-		dc.LineTo(m_MeasurePoint2);
-		m_MeasurePoint2.y = m_MeasurePoint1.y;
-		dc.LineTo(m_MeasurePoint2);
-		m_MeasurePoint2.x = m_MeasurePoint1.x;
-		dc.LineTo(m_MeasurePoint2);
+		RecoverRect(&dc, m_MeasurePoint1, m_MeasurePoint2);
+		pPen = dc.SelectObject(&pen);
+		DrawRect(&dc, m_MeasurePoint1, point);
+		dc.SelectObject(pPen);
 
 		m_MeasurePoint2 = point;
 	}
@@ -379,6 +353,9 @@ void CImageAnalyzerView::OnLButtonUp(UINT nFlags, CPoint point)
 		m_MeasureCnt++;
 	}
 
+	/*
+	 * Output 1
+	 */
 	if(m_MeasureCnt == 6)
 	{
 		int i;
@@ -402,6 +379,33 @@ void CImageAnalyzerView::OnLButtonUp(UINT nFlags, CPoint point)
 		}
 		fprintf(fp, "\nB");
 		for (i = 0; i < 6; i++) {
+			fprintf(fp, "\t%d", m_B[i]);
+		}
+		fclose(fp);
+		fp = NULL;
+	}
+
+	/*
+	 * Output 2 (for MySQL)
+	 */
+	if (m_MeasureCnt == 6) {
+		int i;
+		FILE *fp;
+
+		fp = fopen("measure_result_sql.txt", "r+t");
+		if (!fp)	fp = fopen("measure_result_sql.txt", "wt");
+		fseek(fp, 0, SEEK_END);
+
+		fprintf(fp, "\n");
+		for (i = 0; i < m_strBMPFileName.GetLength(); i++) {
+			if (m_strBMPFileName[i] == '\n') break;
+			fprintf(fp, "%c", m_strBMPFileName[i]);
+		}
+		fprintf(fp, "\t");
+		//fprintf(fp, "\nR");
+		for (i = 0; i < 6; i++) {
+			fprintf(fp, "\t%d", m_R[i]);
+			fprintf(fp, "\t%d", m_G[i]);
 			fprintf(fp, "\t%d", m_B[i]);
 		}
 		fclose(fp);
@@ -437,8 +441,10 @@ void CImageAnalyzerView::SaveResult(CString strFilename)
 
 		// exiftool -ExposureTime -ISO -FNUMBER -CREATEDATE img001.jpg > exif.txt
 		str.Format(_T(".\\exiftool -ExposureTime -ISO -FNUMBER -CREATEDATE "));
+		str += '\"';
 		str += m_strInputFileName;
-		str += _T("> exif.txt");
+		str += '\"';
+		str += _T(" > exif.txt");
 
 		if ((j = str.GetLength()) > 1024) {
 			break;
@@ -612,9 +618,13 @@ CString CImageAnalyzerView::GenerateBMP(CString strFileName)
 
 	// ffmpeg -i IMG20170712151728.jpg -frames 1 -pix_fmt bgr24 -y IMG20170712151728.bmp
 	strCmd.Format(_T(".\\ffmpeg -i "));
+	strCmd += '\"'; 
 	strCmd += strFileName;
+	strCmd += '\"';
 	strCmd += _T(" -vframes 1 -pix_fmt bgr24 -y ");
+	strCmd += '\"';
 	strCmd += strBMPFileName;
+	strCmd += '\"';
 
 	if (strCmd.GetLength() > 1023) {
 		return strBMPFileName;
@@ -742,6 +752,34 @@ int CImageAnalyzerView::DrawRect(CDC *pDC, CPoint p1, CPoint p2)
 	pDC->LineTo(right, bottom);
 	pDC->LineTo(left,  bottom);
 	pDC->LineTo(left,  top);
+
+	return 0;
+}
+
+int CImageAnalyzerView::RecoverRect(CDC *pDC, CPoint p1, CPoint p2)
+{
+	CRect rect;
+	//int   top, bottom, right, left;
+
+	if (p1.y < p2.y) {
+		rect.top = p1.y + 1;
+		rect.bottom = p2.y;
+	}
+	else {
+		rect.top = p2.y + 1;
+		rect.bottom = p1.y;
+	}
+
+	if (p1.x < p2.x) {
+		rect.left = p1.x + 1;
+		rect.right = p2.x;
+	}
+	else {
+		rect.left = p2.x + 1;
+		rect.right = p1.x;
+	}
+
+	InvalidateRect(rect);
 
 	return 0;
 }

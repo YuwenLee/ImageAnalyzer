@@ -99,6 +99,7 @@ public:
 	afx_msg void OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
 protected:
 	int DrawRect(CDC *pDC, CPoint p1, CPoint p2);
+	int RecoverRect(CDC *pDC, CPoint p1, CPoint p2);
 };
 
 #ifndef _DEBUG  // ImageAnalyzerView.cpp ¤¤ªº°»¿ùª©¥»
