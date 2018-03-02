@@ -161,6 +161,9 @@ int BMP::GetAVG_G(int x, int y, int w, int h)
 
 	ptr += (GetHeight() - y)*nLineBytes;
 
+	if (w == 0) w = 2;
+	if (h == 0) h = 2;
+
 	for (j = 0; j < h; j++) {
 		ptr -= nLineBytes;
 		for (i = x; i < (x + w); i++) {

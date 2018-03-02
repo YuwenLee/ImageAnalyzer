@@ -34,8 +34,10 @@ END_MESSAGE_MAP()
 // CImageAnalyzerView 建構/解構
 
 CImageAnalyzerView::CImageAnalyzerView()
-	: m_strBMPFileName(_T(""))
+	: m_strInputFileName(_T(""))
+	, m_strBMPFileName(_T(""))
 	, m_hBMP(NULL)
+	, m_bGotButtonDown(FALSE)
 	, m_nBMPWidth(0)
 	, m_nBMPHeight(0)
 	, m_nViewWidth(0)
@@ -45,6 +47,7 @@ CImageAnalyzerView::CImageAnalyzerView()
 	, m_nAVRGr(0)
 	, m_nAVRGb(0)
 	, m_nAVRGg(0)
+	, m_MeasureCnt(0)
 {
 	// TODO: 在此加入建構程式碼
 
@@ -140,31 +143,72 @@ CImageAnalyzerDoc* CImageAnalyzerView::GetDocument() const // 內嵌非偵錯版本
 void CImageAnalyzerView::OnFileOpen()
 {
 	// TODO: 在此加入您的命令處理常式程式碼
-	CFileDialog dlg(TRUE, _T("Pictures"), _T("*.bmp"));
+	TCHAR       szFileFilters[] = _T("Pictures (*.jpg)|*.jpg;*.jpeg|Pictures (*.bmp)|*.bmp|RAW|*.raw||");
+	CFileDialog dlg(TRUE, _T("bmp"), NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, szFileFilters);
 	BOOL        bOK;
 	CSize       srcollSize;
-	int         i;
+	int         i, j;
 
 	if (m_FileBMP.m_hFile != CFile::hFileNull) {
-	    m_FileBMP.Close();
-    }
+		m_FileBMP.Close();
+	}
 
 	if (IDOK != dlg.DoModal()) {
 		return;
+	} else {
+
+		//
+		// Save last time result
+		//
+		if (m_strResultFile.GetLength()) {
+			SaveResult(m_strResultFile);
+		}
+
+		//
+		// Clean Up
+		//
+		m_MeasureCnt = 0;
+		for (i = 0; i < 6; i++) {
+			m_R[i] = 0;
+			m_G[i] = 0;
+			m_B[i] = 0;
+		}
 	}
 
-	m_MeasureCnt = 0;
-	for (i = 0; i < 6; i++) {
-		m_R[i] = 0;
-		m_G[i] = 0;
-		m_B[i] = 0;
+	//
+	// Get the input file name
+	//
+	m_strInputFileName = dlg.GetPathName();
+	j = m_strInputFileName.GetLength();
+	if (((m_strInputFileName.GetAt(j-3) & 0xDF) == 'J') &&
+		((m_strInputFileName.GetAt(j-2) & 0xDF) == 'P') &&
+		((m_strInputFileName.GetAt(j-1) & 0xDF) == 'G'))
+	{
+		m_strBMPFileName = GenerateBMP(m_strInputFileName);
 	}
+	
+	//
+	// Extract EXIF
+	//
 
-	m_strBMPFileName = dlg.GetPathName();
 	bOK = m_FileBMP.Open(m_strBMPFileName, CFile::modeRead | CFile::typeBinary);
-
 	if (!bOK) {
 		return;
+	}
+
+	//
+	// Prepare for the new result file name
+	//
+	{
+		j = m_strBMPFileName.GetLength();
+		m_strResultFile.GetBufferSetLength(j);
+		for (i = 0; i < (j - 3); i++) {
+			m_strResultFile.SetAt(i, m_strBMPFileName[i]);
+		}
+
+		m_strResultFile.SetAt(i++, 't');
+		m_strResultFile.SetAt(i++, 'x');
+		m_strResultFile.SetAt(i, 't');
 	}
 
 	//
@@ -220,17 +264,47 @@ void CImageAnalyzerView::OnPaint()
 					   // TODO: 在此加入您的訊息處理常式程式碼
 					   // 不要呼叫圖片訊息的 CScrollView::OnPaint()
 
-	CDC            mDC;
+	CDC            dcMem;
 	CBitmap       *p_bmp;
 	CString        str;
 	CPoint         point;
 
 	point = GetScrollPosition();
 
-	mDC.CreateCompatibleDC(&dc);
-	p_bmp = mDC.SelectObject(&m_bmpGDI);
-	dc.BitBlt(0, 0, m_nViewWidth, m_nViewHeight, &mDC, point.x, point.y, SRCCOPY);
-	mDC.SelectObject(p_bmp);
+	// Load BMP file to the compatible DC and copy the content to the paint DC.
+	dcMem.CreateCompatibleDC(&dc);
+	p_bmp = dcMem.SelectObject(&m_bmpGDI);
+
+	if (1) {
+		CPen pen1(PS_SOLID, 1, RGB(255, 0, 0));
+		CPen pen2(PS_SOLID, 1, RGB(0, 255, 0));
+		CPen pen3(PS_SOLID, 1, RGB(0, 0, 255));
+		CPen *pOldPen;
+
+		switch (m_MeasureCnt % 3)
+		{
+			case 0:
+				pOldPen = dcMem.SelectObject(&pen1);
+				break;
+			case 1:
+				pOldPen = dcMem.SelectObject(&pen2);
+				break;
+			case 2:
+				pOldPen = dcMem.SelectObject(&pen3);
+				break;
+		}
+		
+		dcMem.MoveTo(m_MeasurePoint1);
+		dcMem.LineTo(m_MeasurePoint1.x, m_MeasurePoint2.y);
+		dcMem.LineTo(m_MeasurePoint2);
+		dcMem.LineTo(m_MeasurePoint2.x, m_MeasurePoint1.y);
+		dcMem.LineTo(m_MeasurePoint1);
+
+		dcMem.SelectObject(pOldPen);
+	}
+
+	dc.BitBlt(0, 0, m_nViewWidth, m_nViewHeight, &dcMem, point.x, point.y, SRCCOPY);
+	dcMem.SelectObject(p_bmp);
 
 	//str.Format(L"%d, %d : %d, %d, %d", m_nMeasureX, m_nMeasureY, m_nAVRGr, m_nAVRGg, m_nAVRGb);
 	//dc.TextOutW(10, 10, str);
@@ -262,6 +336,7 @@ void CImageAnalyzerView::OnMouseMove(UINT nFlags, CPoint point)
 void CImageAnalyzerView::OnLButtonDown(UINT nFlags, CPoint point)
 {
 	// TODO: 在此加入您的訊息處理常式程式碼和 (或) 呼叫預設值
+	m_bGotButtonDown = TRUE;
 	m_MeasurePoint1 = point;
 
 	CScrollView::OnLButtonDown(nFlags, point);
@@ -273,6 +348,11 @@ void CImageAnalyzerView::OnLButtonUp(UINT nFlags, CPoint point)
 	// TODO: 在此加入您的訊息處理常式程式碼和 (或) 呼叫預設值
 	CPoint ScrollPoint;
 	int    nWidth, nHeight;
+
+	if (!m_bGotButtonDown) {
+		return;
+	}
+	m_bGotButtonDown = FALSE;
 
 	if (m_MeasureCnt == 6) {
 		return;
@@ -292,6 +372,11 @@ void CImageAnalyzerView::OnLButtonUp(UINT nFlags, CPoint point)
 	m_nAVRGb = m_bmp.GetAVG_B(m_nMeasureX, m_nMeasureY, nWidth, nHeight);
 
 	if (m_MeasureCnt < 6) {
+		m_RectMeasureRGB[m_MeasureCnt].left = m_nMeasureX;
+		m_RectMeasureRGB[m_MeasureCnt].top = m_nMeasureY;
+		m_RectMeasureRGB[m_MeasureCnt].right = m_nMeasureX + nWidth;
+		m_RectMeasureRGB[m_MeasureCnt].bottom = m_nMeasureY + nHeight;
+
 		m_R[m_MeasureCnt] = m_nAVRGr / 1000;
 		m_G[m_MeasureCnt] = m_nAVRGg / 1000;
 		m_B[m_MeasureCnt] = m_nAVRGb / 1000;
@@ -327,7 +412,256 @@ void CImageAnalyzerView::OnLButtonUp(UINT nFlags, CPoint point)
 		fp = NULL;
 	}
 
-	Invalidate();
+	//Invalidate();
 
 	CScrollView::OnLButtonUp(nFlags, point);
+}
+
+void CImageAnalyzerView::SaveResult(CString strFilename)
+{
+	CStdioFile     file;
+	int            nOK;
+
+	if (!file.Open(strFilename, CStdioFile::modeReadWrite | CStdioFile::typeText)) {
+		// The file does not exist. Create it.
+		nOK = file.Open(strFilename, CStdioFile::modeCreate | CStdioFile::modeReadWrite | CStdioFile::typeText);
+		if (!nOK) {
+			// Failed to create the file
+			return;
+		}
+	}
+
+	file.Seek(0, CStdioFile::end);
+
+	// EXIF
+	do {
+		CString    str;
+		char       szbuf[1024];
+		int        i, j, k;
+
+		// exiftool -ExposureTime -ISO -FNUMBER -CREATEDATE img001.jpg > exif.txt
+		str.Format(_T(".\\exiftool -ExposureTime -ISO -FNUMBER -CREATEDATE "));
+		str += m_strInputFileName;
+		str += _T("> exif.txt");
+
+		if ((j = str.GetLength()) > 1024) {
+			break;
+		}
+		for (i = 0; i < j; i++) {
+			szbuf[i] = (char)(str[i]);
+		}
+		szbuf[i] = 0;
+		system(szbuf);
+
+	    str = getValue(_T("exif.txt"), _T("Exposure Time"));
+		j = str.GetLength();
+		for (i = 0; i < j; i++) {
+			if (str[i] == '/') {
+				break;
+			}
+		}
+		i++;
+		k = 0;
+		while (i < j) {
+			szbuf[k++] = (char)(str[i++]);
+			if ((str[i] == ' ') || (str[i] == '\n') || (str[i] == '\0')) {
+				break;
+			}
+		}
+		szbuf[k] = '\0';
+		m_nExposure = atoi(szbuf);
+
+		str = getValue(_T("exif.txt"), _T("ISO"));
+		j = str.GetLength();
+		for (i = 0; i < j; i++) {
+			szbuf[i] = (char)(str[i]);
+			if ((str[i]== ' ') || (str[i]=='\n') || (str[i]=='\0')) {
+				break;
+			}
+		}
+		szbuf[i] = '\0';
+		m_nISO = atoi(szbuf);
+
+		str = getValue(_T("exif.txt"), _T("F Number"));
+		j = str.GetLength();
+		for (i = 0; i < j; i++) {
+			szbuf[i] = (char)(str[i]);
+			if (str[i] == '.') {
+				break;
+			}
+		}
+		szbuf[i++] = '\0';
+		m_nFnum_n = atoi(szbuf);
+		for (k = 0; i < j; i++, k++) {
+			szbuf[k] = (char)(str[i]);
+			if ((str[i] == ' ') || (str[i] == '\n') || (str[i]=='\0')) {
+				break;
+			}
+		}
+		szbuf[k] = '\0';
+		m_nFnum_f = atoi(szbuf);
+
+		str = getValue(_T("exif.txt"), _T("Create Date"));
+		j = str.GetLength();
+		for (i = 0; i < j; i++) {
+			szbuf[i] = (char)(str[i]);
+			if ((str[i] == '\n') || (str[i] == '\0')) {
+				break;
+			}
+		}
+		szbuf[i] = '\0';
+		sscanf(szbuf, "%d:%d:%d %d:%d:%d", &m_nYear, &m_nMonth, &m_nDay, &m_nHour, &m_nMin, &m_nSec);
+	} while (0);
+
+	{
+		CString str1;
+		CString str2;
+		int     i;
+
+		file.WriteString(L"[GrayPatches_Measure]\n");
+		str1.Format(L" \t1 \t2 \t3 \t4 \t5 \t6\n");
+		file.WriteString(str1);
+
+		str1.Empty();
+		str2.Empty();		
+		file.WriteString(L"x\t");
+		for (i = 0; i < 6; i++) {
+			str2.Format(L"%d \t", m_RectMeasureRGB[i].left);
+			str1 += str2;
+		}
+		str1 += "\n";
+		file.WriteString(str1);
+		
+		str1.Empty();
+		file.WriteString(L"y\t");
+		for (i = 0; i < 6; i++) {
+			str2.Format(L"%d \t", m_RectMeasureRGB[i].top);
+			str1 += str2;
+		}
+		str1 += "\n";
+		file.WriteString(str1);
+
+		str1.Empty();
+		file.WriteString(L"w\t");
+		for (i = 0; i < 6; i++) {
+			str2.Format(L"%d \t", m_RectMeasureRGB[i].right - m_RectMeasureRGB[i].left);
+			str1 += str2;
+		}
+		str1 += "\n";
+		file.WriteString(str1);
+
+		str1.Empty();
+		file.WriteString(L"h\t");
+		for (i = 0; i < 6; i++) {
+			str2.Format(L"%d \t", m_RectMeasureRGB[i].bottom - m_RectMeasureRGB[i].top);
+			str1 += str2;
+		}
+		str1 += "\n";
+		file.WriteString(str1);
+
+		file.WriteString(L"[GrayPatches]\n");
+		str1.Format(L"\t19 \t20 \t21 \t22 \t23 \t24\n");
+		file.WriteString(str1);
+
+		str1.Format(L"R \t%d \t%d \t%d \t%d \t%d \t%d\n", m_R[0], m_R[1], m_R[2], m_R[3], m_R[4], m_R[5]);
+		file.WriteString(str1);
+		str1.Format(L"G \t%d \t%d \t%d \t%d \t%d \t%d\n", m_G[0], m_G[1], m_G[2], m_G[3], m_G[4], m_G[5]);
+		file.WriteString(str1);
+		str1.Format(L"B \t%d \t%d \t%d \t%d \t%d \t%d\n", m_B[0], m_B[1], m_B[2], m_B[3], m_B[4], m_B[5]);
+		file.WriteString(str1);
+	}
+
+	file.Close();
+
+	return;
+}
+
+
+CString CImageAnalyzerView::GenerateBMP(CString strFileName)
+{
+	CString strBMPFileName(_T(""));
+	CString strCmd;
+	char    szCmd[1024];
+	int     i, j;
+
+	strBMPFileName = strFileName;
+	for (i = j = m_strInputFileName.GetLength(); i; i--) {
+		if (strBMPFileName[i] == '.') {
+			break;
+		}
+	}
+	if (i == 0) {
+		return strBMPFileName;
+	}
+
+	strBMPFileName.GetBuffer()[++i] = 'b';
+	strBMPFileName.GetBuffer()[++i] = 'm';
+	strBMPFileName.GetBuffer()[++i] = 'p';
+
+	strCmd.Format(_T(".\\ffmpeg -i "));
+	strCmd += strFileName;
+	strCmd += _T(" -vframes 1 -pix_fmt bgr24 -y ");
+	strCmd += strBMPFileName;
+
+	if (strCmd.GetLength() > 1023) {
+		return strBMPFileName;
+	}
+
+	for (i = 0; i < strCmd.GetLength(); i++) {
+		szCmd[i] = (char)(strCmd[i]);
+	}
+	szCmd[i] = 0;
+	system(szCmd);
+
+	return strBMPFileName;
+}
+
+
+CString CImageAnalyzerView::getValue(CString strFilename, CString strTag)
+{
+	CString    strVal;
+	CString    buf;
+	CStdioFile file;
+	int        i, j, k;
+	
+	strVal.Empty();
+	if (!file.Open((LPCTSTR)strFilename, CStdioFile::modeRead | CStdioFile::typeText)) {
+		return strVal;
+	}
+
+	buf.GetBufferSetLength(128);
+	do {
+		if (!file.ReadString(buf.GetBuffer(), 128)) {
+			break;
+		}
+		i = buf.Find(strTag);
+		if (i == -1) {
+			continue;
+		}
+		j = buf.Find(_T(":"), i);
+		if (j == -1) {
+			break;
+		}
+		j += 1;
+		strVal.GetBufferSetLength(64);
+		// Bypass spaces
+		k = buf.GetLength();
+		while(j < k) {
+			if (buf[j] == ' ' || buf[j] == '\n' || buf[j] == '\r' || buf[j] == '\t') {
+				j++;
+				continue;
+			}
+			break;
+		}
+		for (i = 0; i < 64; i++, j++) {
+			if (buf[j] == '\n' || buf[j] == '\r') {
+				break;
+			}
+			strVal.GetBuffer()[i] = buf[j];
+		}
+		strVal.GetBuffer()[i] = '\0';
+	} while (1);
+     
+	file.Close();
+    return strVal;
 }
