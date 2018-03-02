@@ -105,3 +105,102 @@ unsigned char * BMP::GetInfoHeader()
 
 	return (m_pData + sizeof(_BITMAPFILEHEADER_));
 }
+
+int BMP::GetAVG_R(int x, int y, int w, int h)
+{
+	unsigned int   avrg;
+	unsigned char *ptr;
+	int            nImgWidth;
+	int            nLinePadding;
+	int            nLineBytes;
+	int            i, j, k;
+
+	avrg = 0;
+	ptr = GetRGB();
+
+	if (ptr == NULL) {
+		return 0;
+	}
+
+	nImgWidth = GetWidth() * 3;
+	nLinePadding = (4 - nImgWidth % 4) % 4;
+ 	nLineBytes = nImgWidth + nLinePadding;
+
+	ptr += (GetHeight() - y)*nLineBytes;
+
+	for (j = 0; j < h ; j++) {
+		ptr -= nLineBytes;
+		for (i = x; i < (x + w); i++) {
+			avrg += *(ptr + i*3 + 2);
+		}
+	}
+	avrg = avrg*1000 / (w*h);
+
+	return avrg;
+}
+
+int BMP::GetAVG_G(int x, int y, int w, int h)
+{
+	unsigned int   avrg;
+	unsigned char *ptr;
+	int            nImgWidth;
+	int            nLinePadding;
+	int            nLineBytes;
+	int            i, j, k;
+
+	avrg = 0;
+	ptr = GetRGB();
+
+	if (ptr == NULL) {
+		return 0;
+	}
+
+	nImgWidth = GetWidth() * 3;
+	nLinePadding = (4 - nImgWidth % 4) % 4;
+	nLineBytes = nImgWidth + nLinePadding;
+
+	ptr += (GetHeight() - y)*nLineBytes;
+
+	for (j = 0; j < h; j++) {
+		ptr -= nLineBytes;
+		for (i = x; i < (x + w); i++) {
+			avrg += *(ptr + i*3 + 1);
+		}
+	}
+	avrg = avrg * 1000 / (w*h);
+
+	return avrg;
+}
+
+int BMP::GetAVG_B(int x, int y, int w, int h)
+{
+	unsigned int   avrg;
+	unsigned char *ptr;
+	int            nImgWidth;
+	int            nLinePadding;
+	int            nLineBytes;
+	int            i, j, k;
+
+	avrg = 0;
+	ptr = GetRGB();
+
+	if (ptr == NULL) {
+		return 0;
+	}
+
+	nImgWidth = GetWidth() * 3;
+	nLinePadding = (4 - nImgWidth % 4) % 4;
+	nLineBytes = nImgWidth + nLinePadding;
+
+	ptr += (GetHeight() - y)*nLineBytes;
+
+	for (j = 0; j < h; j++) {
+		ptr -= nLineBytes;
+		for (i = x; i < (x + w); i++) {
+			avrg += *(ptr + i*3);
+		}
+	}
+	avrg = avrg * 1000 / (w*h);
+
+	return avrg;
+}

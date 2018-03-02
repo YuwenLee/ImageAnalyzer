@@ -20,6 +20,9 @@ public:
 	unsigned char * GetRGB();
 	unsigned char * GetFileHeader();
 	unsigned char * GetInfoHeader();
+	int GetAVG_R(int x, int y, int w, int h);
+	int GetAVG_G(int x, int y, int w, int h);
+	int GetAVG_B(int x, int y, int w, int h);
 };
 
 #endif //_170313_CBMP_
