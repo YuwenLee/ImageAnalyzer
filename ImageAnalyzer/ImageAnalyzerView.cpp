@@ -11,6 +11,8 @@
 
 #include "ImageAnalyzerDoc.h"
 #include "ImageAnalyzerView.h"
+#include "Img_RAW.h"
+#include "RawFormatDlg.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -164,6 +166,7 @@ void CImageAnalyzerView::OnFileOpen()
 	BOOL        bOK;
 	CSize       srcollSize;
 	int         i, j;
+	int         pic_type = 0;
 
 	if (m_FileBMP.m_hFile != CFile::hFileNull) {
 		m_FileBMP.Close();
@@ -171,7 +174,8 @@ void CImageAnalyzerView::OnFileOpen()
 
 	if (IDOK != dlg.DoModal()) {
 		return;
-	} else {
+	}
+	else {
 		//
 		// Clean Up
 		//
@@ -192,67 +196,118 @@ void CImageAnalyzerView::OnFileOpen()
 	//
 	m_strInputFileName = dlg.GetPathName();
 	j = m_strInputFileName.GetLength();
-	if (((m_strInputFileName.GetAt(j-3) & 0xDF) == 'J') &&
-		((m_strInputFileName.GetAt(j-2) & 0xDF) == 'P') &&
-		((m_strInputFileName.GetAt(j-1) & 0xDF) == 'G'))
+	if (((m_strInputFileName.GetAt(j - 3) & 0xDF) == 'J') &&
+		((m_strInputFileName.GetAt(j - 2) & 0xDF) == 'P') &&
+		((m_strInputFileName.GetAt(j - 1) & 0xDF) == 'G'))
 	{
 		m_strBMPFileName = GenerateBMP(m_strInputFileName);
+		pic_type = 1;
 	}
-	
+	else if (((m_strInputFileName.GetAt(j - 3) & 0xDF) == 'B') &&
+             ((m_strInputFileName.GetAt(j - 2) & 0xDF) == 'M') &&
+             ((m_strInputFileName.GetAt(j - 1) & 0xDF) == 'P'))
+	{
+		pic_type = 2;
+	}
+	else if (((m_strInputFileName.GetAt(j - 3) & 0xDF) == 'R') &&
+	         ((m_strInputFileName.GetAt(j - 2) & 0xDF) == 'A') &&
+	         ((m_strInputFileName.GetAt(j - 1) & 0xDF) == 'W'))
+	{
+		int     i, j;
+
+		m_strBMPFileName = m_strInputFileName;
+		for (i = j = m_strInputFileName.GetLength(); i; i--) {
+			if (m_strBMPFileName[i] == '.') {
+				break;
+			}
+		}
+
+		m_strBMPFileName.GetBuffer()[++i] = 'b';
+		m_strBMPFileName.GetBuffer()[++i] = 'm';
+		m_strBMPFileName.GetBuffer()[++i] = 'p';
+
+		pic_type = 3;
+	}
+
 	//
 	// Extract EXIF
 	//
-	bOK = m_FileBMP.Open(m_strBMPFileName, CFile::modeRead | CFile::typeBinary);
-	if (!bOK) {
-		return;
-	}
-
-	//
-	// Prepare for the new result file name
-	//
+	switch (pic_type)
 	{
-		j = m_strBMPFileName.GetLength();
-		m_strResultFile.GetBufferSetLength(j);
-		for (i = 0; i < (j - 3); i++) {
-			m_strResultFile.SetAt(i, m_strBMPFileName[i]);
-		}
+		default:
+		case 1:
+		case 2:
+			bOK = m_FileBMP.Open(m_strBMPFileName, CFile::modeRead | CFile::typeBinary);
+			if (!bOK) {
+				return;
+			}
+			//
+			// Prepare for the new result file name
+			//
+			{
+				j = m_strBMPFileName.GetLength();
+				m_strResultFile.GetBufferSetLength(j);
+				for (i = 0; i < (j - 3); i++) {
+					m_strResultFile.SetAt(i, m_strBMPFileName[i]);
+				}
 
-		m_strResultFile.SetAt(i++, 't');
-		m_strResultFile.SetAt(i++, 'x');
-		m_strResultFile.SetAt(i, 't');
+				m_strResultFile.SetAt(i++, 't');
+				m_strResultFile.SetAt(i++, 'x');
+				m_strResultFile.SetAt(i, 't');
+			}
+
+			//
+			// Load the Image File
+			//
+			{
+				unsigned int uSize;
+
+				uSize = (unsigned int)m_FileBMP.GetLength();
+				m_bmp.SetBufferSize(uSize);
+				m_FileBMP.Read(m_bmp.GetFileHeader(), uSize);
+				m_FileBMP.Close();
+
+				if (m_hBMP) {
+					m_bmpGDI.Detach();
+					DeleteObject(m_hBMP);
+					m_hBMP = NULL;
+				}
+
+				m_hBMP = (HBITMAP)::LoadImage(
+					GetModuleHandle(NULL),
+					m_strBMPFileName,
+					IMAGE_BITMAP, 0, 0,
+					LR_DEFAULTSIZE | LR_LOADFROMFILE);
+
+				m_bmpGDI.Attach(m_hBMP);
+
+				//
+				// Set the size of scroll view
+				//
+				m_nBMPWidth = srcollSize.cx = m_bmp.GetWidth();
+				m_nBMPHeight = srcollSize.cy = m_bmp.GetHeight();
+
+				SetScrollSizes(MM_TEXT, srcollSize);
+			}
+			break;
+		case 3:
+			CFile         cfile;
+			Img_RAW       raw;
+			CRawFormatDlg dlg;
+			int           format=0;
+			CString       strOutputFilename;
+
+			cfile.Open(m_strInputFileName, CFile::modeRead | CFile::typeBinary);
+			raw.SetBufferSize(cfile.GetLength());
+			cfile.Read(raw.GetBuffer(), cfile.GetLength());
+			if (IDOK == dlg.DoModal()) {
+				format = dlg.GetFormat();
+			}
+			raw.SetFormat(format, 4032, 3024);
+			raw.WriteToBMP(m_strBMPFileName);
+			break;
+
 	}
-
-	//
-	// Load the Image File
-	//
-	unsigned int uSize;
-
-	uSize = (unsigned int)m_FileBMP.GetLength();
-	m_bmp.SetBufferSize(uSize);
-	m_FileBMP.Read(m_bmp.GetFileHeader(), uSize);
-	m_FileBMP.Close();
-
-	if (m_hBMP) {
-		m_bmpGDI.Detach();
-		DeleteObject(m_hBMP);
-		m_hBMP = NULL;
-	}
-
-	m_hBMP = (HBITMAP)::LoadImage(
-		GetModuleHandle(NULL),
-		m_strBMPFileName,
-		IMAGE_BITMAP, 0, 0,
-		LR_DEFAULTSIZE | LR_LOADFROMFILE);
-
-	m_bmpGDI.Attach(m_hBMP);
-
-	//
-	// Set the size of scroll view
-	//
-	m_nBMPWidth = srcollSize.cx = m_bmp.GetWidth();
-	m_nBMPHeight = srcollSize.cy = m_bmp.GetHeight();
-            
-	SetScrollSizes(MM_TEXT, srcollSize);
 
 	Invalidate();
 }

@@ -156,8 +156,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,0,0,2
- PRODUCTVERSION 1,0,0,2
+ FILEVERSION 1,1,0,3
+ PRODUCTVERSION 1,1,0,3
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -174,12 +174,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "wiscon"
             VALUE "FileDescription", "ImageAnalyzer"
-            VALUE "FileVersion", "1.0.0.2"
+            VALUE "FileVersion", "1.1.0.3"
             VALUE "InternalName", "ImageAnalyzer.exe"
             VALUE "LegalCopyright", "(c) wiscon.  著作權所有，並保留一切權利。"
             VALUE "OriginalFilename", "ImageAnalyzer.exe"
             VALUE "ProductName", "ImageAnalyzer"
-            VALUE "ProductVersion", "1.0.0.2"
+            VALUE "ProductVersion", "1.1.0.3"
         END
     END
     BLOCK "VarFileInfo"
@@ -318,6 +318,80 @@ BEGIN
 END
 
 #endif    // 中文 (繁體，台灣) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+/////////////////////////////////////////////////////////////////////////////
+// 英文 (美國) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_RAW_FORMAT DIALOGEX 0, 0, 195, 54
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "RAW Data Format"
+FONT 10, "Meiryo UI", 400, 0, 0x0
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,42,33,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,109,33,50,14
+    COMBOBOX        IDC_FORMAT,69,9,117,30,CBS_DROPDOWN | CBS_SORT | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Format : ",IDC_STATIC,9,9,41,10
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO
+BEGIN
+    IDD_RAW_FORMAT, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 186
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 47
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// AFX_DIALOG_LAYOUT
+//
+
+IDD_RAW_FORMAT AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog Info
+//
+
+IDD_RAW_FORMAT DLGINIT
+BEGIN
+    IDC_FORMAT, 0x403, 23, 0
+0x2e31, 0x3120, 0x2d30, 0x6962, 0x2074, 0x5247, 0x4742, 0x202c, 0x6150, 
+0x6b63, 0x6465, "\000" 
+    IDC_FORMAT, 0x403, 25, 0
+0x2e32, 0x3120, 0x2d30, 0x6962, 0x2074, 0x5247, 0x4742, 0x202c, 0x6e55, 
+0x6170, 0x6b63, 0x6465, "\000" 
+    0
+END
+
+#endif    // 英文 (美國) resources
 /////////////////////////////////////////////////////////////////////////////
 
 
