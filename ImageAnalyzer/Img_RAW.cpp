@@ -62,7 +62,7 @@ int Img_RAW::SetFormat(int nFormat, int nWidth, int nHeight)
 	m_pUnpackedData = (unsigned char *)malloc( m_uSize*sizeof(unsigned int) );
 	memset(m_pUnpackedData, 0, m_uSize);
 	
-	if (nFormat == bayer_grbg_10bit_packed) {
+	if ((nFormat == bayer_grbg_10bit_packed) || (nFormat == bayer_gbrg_10bit_packed)) {
 		i = 0;
 		j = 0;
 		k = 0;
@@ -106,7 +106,7 @@ int Img_RAW::SetFormat(int nFormat, int nWidth, int nHeight)
 			j += 2;
 
 		} while (i < m_nWidth*m_nHeight);
-	} else if (nFormat == bayer_grbg_10bit_unpacked) {
+	} else if ((nFormat == bayer_grbg_10bit_unpacked)||(nFormat == bayer_gbrg_10bit_unpacked)) {
 		m_pUnpackedData = m_pData;
 		m_pData = NULL;
 	}
@@ -350,6 +350,9 @@ int Img_RAW::TransferToBMP(unsigned char *pRAW, int nWidth, int nHeight, unsigne
 	if ((m_nFormat== bayer_grbg_10bit_packed) || (m_nFormat== bayer_grbg_10bit_packed))
 	{
 		s_nSwaprb = 1;
+	}
+	else if ((m_nFormat == bayer_gbrg_10bit_packed) || (m_nFormat == bayer_gbrg_10bit_packed)) {
+		s_nSwaprb = 0;
 	}
 
 	for (dst_y = 0; dst_y<nHeight; dst_y++) {

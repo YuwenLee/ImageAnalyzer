@@ -18,6 +18,8 @@ public:
 
 protected:
 	int m_nFormat;
+	int m_nWidth;
+	int m_nHeight;
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV ¤ä´©
 
 	DECLARE_MESSAGE_MAP()
@@ -26,4 +28,5 @@ public:
 	virtual BOOL OnInitDialog();
 	int GetFormat();
 	afx_msg void OnCbnSelchangeFormat();
+	int GetWidthHeight(int * pnWidth, int * pnHeight);
 };

@@ -92,7 +92,7 @@ public:
 	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
 protected:
 	void SaveResult(CString strFileName);
-	CString GenerateBMP(CString strFileName);
+	int GenerateBMP(CString strFileName, CString strBMPFileName);
 	CString getValue(CString strFilename, CString strTag);
 public:
 	afx_msg void OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags);

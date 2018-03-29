@@ -167,6 +167,7 @@ void CImageAnalyzerView::OnFileOpen()
 	CSize       srcollSize;
 	int         i, j;
 	int         pic_type = 0;
+	TCHAR       szTempPath[MAX_PATH + 1];
 
 	if (m_FileBMP.m_hFile != CFile::hFileNull) {
 		m_FileBMP.Close();
@@ -191,6 +192,10 @@ void CImageAnalyzerView::OnFileOpen()
 		}
 	}
 
+	GetTempPath(MAX_PATH + 1, szTempPath);
+	m_strBMPFileName = szTempPath;
+	m_strBMPFileName += "ClientDC.bmp";
+
 	//
 	// Get the input file name
 	//
@@ -200,13 +205,14 @@ void CImageAnalyzerView::OnFileOpen()
 		((m_strInputFileName.GetAt(j - 2) & 0xDF) == 'P') &&
 		((m_strInputFileName.GetAt(j - 1) & 0xDF) == 'G'))
 	{
-		m_strBMPFileName = GenerateBMP(m_strInputFileName);
+		GenerateBMP(m_strInputFileName, m_strBMPFileName);
 		pic_type = 1;
 	}
 	else if (((m_strInputFileName.GetAt(j - 3) & 0xDF) == 'B') &&
              ((m_strInputFileName.GetAt(j - 2) & 0xDF) == 'M') &&
              ((m_strInputFileName.GetAt(j - 1) & 0xDF) == 'P'))
 	{
+		m_strBMPFileName = m_strInputFileName;
 		pic_type = 2;
 	}
 	else if (((m_strInputFileName.GetAt(j - 3) & 0xDF) == 'R') &&
@@ -294,7 +300,7 @@ void CImageAnalyzerView::OnFileOpen()
 			CFile         cfile;
 			Img_RAW       raw;
 			CRawFormatDlg dlg;
-			int           format=0;
+			int           format=0, width=0, height=0;
 			CString       strOutputFilename;
 
 			cfile.Open(m_strInputFileName, CFile::modeRead | CFile::typeBinary);
@@ -302,8 +308,9 @@ void CImageAnalyzerView::OnFileOpen()
 			cfile.Read(raw.GetBuffer(), cfile.GetLength());
 			if (IDOK == dlg.DoModal()) {
 				format = dlg.GetFormat();
+				dlg.GetWidthHeight(&width, &height);
 			}
-			raw.SetFormat(format, 4032, 3024);
+			raw.SetFormat(format, width, height);
 			raw.WriteToBMP(m_strBMPFileName);
 			break;
 
@@ -761,13 +768,14 @@ VALUES(\n");
 }
 
 
-CString CImageAnalyzerView::GenerateBMP(CString strFileName)
+int CImageAnalyzerView::GenerateBMP(CString strFileName, CString strBMPFileName)
 {
-	CString strBMPFileName(_T(""));
+	//CString strBMPFileName(_T(""));
 	CString strCmd;
 	char    szCmd[1024];
 	int     i, j;
 
+	/*
 	strBMPFileName = strFileName;
 	for (i = j = m_strInputFileName.GetLength(); i; i--) {
 		if (strBMPFileName[i] == '.') {
@@ -777,10 +785,11 @@ CString CImageAnalyzerView::GenerateBMP(CString strFileName)
 	if (i == 0) {
 		return strBMPFileName;
 	}
-
+	
 	strBMPFileName.GetBuffer()[++i] = 'b';
 	strBMPFileName.GetBuffer()[++i] = 'm';
 	strBMPFileName.GetBuffer()[++i] = 'p';
+	*/
 
 	// ffmpeg -i IMG20170712151728.jpg -frames 1 -pix_fmt bgr24 -y IMG20170712151728.bmp
 	strCmd.Format(_T(".\\ffmpeg -i "));
@@ -793,7 +802,7 @@ CString CImageAnalyzerView::GenerateBMP(CString strFileName)
 	strCmd += '\"';
 
 	if (strCmd.GetLength() > 1023) {
-		return strBMPFileName;
+		return -1;
 	}
 
 	for (i = 0; i < strCmd.GetLength(); i++) {
@@ -802,7 +811,7 @@ CString CImageAnalyzerView::GenerateBMP(CString strFileName)
 	szCmd[i] = 0;
 	system(szCmd);
 
-	return strBMPFileName;
+	return 0;
 }
 
 

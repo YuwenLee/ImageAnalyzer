@@ -5,7 +5,9 @@
 
 typedef enum {
 	bayer_grbg_10bit_packed = 0,
-	bayer_grbg_10bit_unpacked
+	bayer_grbg_10bit_unpacked,
+	bayer_gbrg_10bit_packed,
+	bayer_gbrg_10bit_unpacked
 } img_raw_format ;
 
 class Img_RAW
