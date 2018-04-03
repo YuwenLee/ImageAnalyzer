@@ -1,9 +1,9 @@
 
-// ImageAnalyzerView.cpp : CImageAnalyzerView √˛ßO™∫πÍß@
+// ImageAnalyzerView.cpp : CImageAnalyzerView √˛ßO™∫?E@
 //
 
 #include "stdafx.h"
-// SHARED_HANDLERS •i•H©w∏q¶bπÍß@πwƒ˝°B¡Yπœ©M∑j¥MøzøÔ±¯•Û≥B≤z±`¶°™∫
+// SHARED_HANDLERS •i•H©w∏q¶b?E@πwƒ˝°B¡Yπœ©M∑j¥Møz?E¯•Û≥B≤z±`¶°™∫
 // ATL ±MÆ◊§§°A®√§π≥\ªP∏”±MÆ◊¶@•Œ§Â•Ûµ{¶°ΩX°C
 #ifndef SHARED_HANDLERS
 #include "ImageAnalyzer.h"
@@ -33,6 +33,10 @@ BEGIN_MESSAGE_MAP(CImageAnalyzerView, CScrollView)
 	ON_WM_KEYUP()
 	ON_WM_HSCROLL()
 	ON_WM_VSCROLL()
+	ON_COMMAND(ID_ACTION_TEACHERDATA, &CImageAnalyzerView::OnActionTeacherdata)
+	ON_UPDATE_COMMAND_UI(ID_ACTION_TEACHERDATA, &CImageAnalyzerView::OnUpdateActionTeacherdata)
+	ON_UPDATE_COMMAND_UI(ID_ACTION_MEASURE, &CImageAnalyzerView::OnUpdateActionMeasure)
+	ON_COMMAND(ID_ACTION_MEASURE, &CImageAnalyzerView::OnActionMeasure)
 END_MESSAGE_MAP()
 
 // CImageAnalyzerView ´ÿ∫c/∏—∫c
@@ -61,6 +65,8 @@ CImageAnalyzerView::CImageAnalyzerView()
 		m_R[i] = 0;
 		m_L[i] = 0.000001;
 	}
+
+	m_nAction = 1; // Measure RGB
 }
 
 CImageAnalyzerView::~CImageAnalyzerView()
@@ -69,8 +75,8 @@ CImageAnalyzerView::~CImageAnalyzerView()
 
 BOOL CImageAnalyzerView::PreCreateWindow(CREATESTRUCT& cs)
 {
-	// TODO: ¶b¶π∏g•—≠◊ßÔ CREATESTRUCT cs 
-	// πF®Ï≠◊ßÔµ¯µ°√˛ßO©ŒºÀ¶°™∫•ÿ™∫
+	// TODO: ¶b¶π∏g•—≠◊?ECREATESTRUCT cs 
+	// πF?E◊ßÅE¯µ°√˛ßO©ŒºÀ¶°™∫•ÿ™∫
 
 	return CScrollView::PreCreateWindow(cs);
 }
@@ -84,7 +90,7 @@ void CImageAnalyzerView::OnDraw(CDC* pDC)
 	if (!pDoc)
 		return;
 
-	// TODO: ¶b¶π•[§J≠Ï•Õ∏ÍÆ∆™∫¥y√∏µ{¶°ΩX
+	// TODO: ¶b¶π•[§J?EÕ∏ÅE∆™∫¥y√∏µ{¶°ΩX
 	CDC            dcMem;
 	CBitmap       *p_bmp;
 	CString        str;
@@ -131,6 +137,8 @@ void CImageAnalyzerView::OnInitialUpdate()
 	sizeTotal.cx = 100;
 	sizeTotal.cy = 100;
 	SetScrollSizes(MM_TEXT, sizeTotal);
+
+	
 }
 
 
@@ -161,35 +169,46 @@ CImageAnalyzerDoc* CImageAnalyzerView::GetDocument() const // §∫¥O´D∞ªø˘™©•ª
 void CImageAnalyzerView::OnFileOpen()
 {
 	// TODO: ¶b¶π•[§J±z™∫©R•O≥B≤z±`¶°µ{¶°ΩX
-	TCHAR       szFileFilters[] = _T("Pictures (*.jpg)|*.jpg;*.jpeg|Pictures (*.bmp)|*.bmp|RAW|*.raw||");
-	CFileDialog dlg(TRUE, _T("bmp"), NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, szFileFilters);
+	TCHAR       szFileFilters_JPG[] = _T("Pictures (*.jpg)|*.jpg;*.jpeg|Pictures (*.bmp)|*.bmp||");
+	TCHAR       szFileFilters_RAW[] = _T("RAW Data|*.raw||");
 	BOOL        bOK;
 	CSize       srcollSize;
 	int         i, j;
 	int         pic_type = 0;
 	TCHAR       szTempPath[MAX_PATH + 1];
 
+	if (m_nAction == 0) {
+		CFileDialog dlg(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, szFileFilters_RAW);
+		if (IDOK != dlg.DoModal()) {
+			return;
+		}
+		m_strInputFileName = dlg.GetPathName();
+	}
+	else if(m_nAction == 1) {
+		CFileDialog dlg(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, szFileFilters_JPG);
+		if (IDOK != dlg.DoModal()) {
+			return;
+		}
+		m_strInputFileName = dlg.GetPathName();
+	}
+
 	if (m_FileBMP.m_hFile != CFile::hFileNull) {
 		m_FileBMP.Close();
 	}
 
-	if (IDOK != dlg.DoModal()) {
-		return;
-	}
-	else {
-		//
-		// Clean Up
-		//
-		if (m_strResultFile.GetLength()) {
-			m_strResultFile.Empty();
-		}
 
-		m_MeasureCnt = 0;
-		for (i = 0; i < 6; i++) {
-			m_R[i] = 0;
-			m_G[i] = 0;
-			m_B[i] = 0;
-		}
+	//
+	// Clean Up
+	//
+	if (m_strResultFile.GetLength()) {
+		m_strResultFile.Empty();
+	}
+
+	m_MeasureCnt = 0;
+	for (i = 0; i < 6; i++) {
+		m_R[i] = 0;
+		m_G[i] = 0;
+		m_B[i] = 0;
 	}
 
 	GetTempPath(MAX_PATH + 1, szTempPath);
@@ -197,9 +216,8 @@ void CImageAnalyzerView::OnFileOpen()
 	m_strBMPFileName += "ClientDC.bmp";
 
 	//
-	// Get the input file name
+	// Check the input file name and generate output file name
 	//
-	m_strInputFileName = dlg.GetPathName();
 	j = m_strInputFileName.GetLength();
 	if (((m_strInputFileName.GetAt(j - 3) & 0xDF) == 'J') &&
 		((m_strInputFileName.GetAt(j - 2) & 0xDF) == 'P') &&
@@ -233,6 +251,8 @@ void CImageAnalyzerView::OnFileOpen()
 		m_strBMPFileName.GetBuffer()[++i] = 'p';
 
 		pic_type = 3;
+
+		GenerateBMP_from_RAW(m_strInputFileName, m_strBMPFileName);
 	}
 
 	//
@@ -243,6 +263,7 @@ void CImageAnalyzerView::OnFileOpen()
 		default:
 		case 1:
 		case 2:
+		case 3:
 			bOK = m_FileBMP.Open(m_strBMPFileName, CFile::modeRead | CFile::typeBinary);
 			if (!bOK) {
 				return;
@@ -251,10 +272,10 @@ void CImageAnalyzerView::OnFileOpen()
 			// Prepare for the new result file name
 			//
 			{
-				j = m_strBMPFileName.GetLength();
+				j = m_strInputFileName.GetLength();
 				m_strResultFile.GetBufferSetLength(j);
 				for (i = 0; i < (j - 3); i++) {
-					m_strResultFile.SetAt(i, m_strBMPFileName[i]);
+					m_strResultFile.SetAt(i, m_strInputFileName[i]);
 				}
 
 				m_strResultFile.SetAt(i++, 't');
@@ -296,24 +317,6 @@ void CImageAnalyzerView::OnFileOpen()
 				SetScrollSizes(MM_TEXT, srcollSize);
 			}
 			break;
-		case 3:
-			CFile         cfile;
-			Img_RAW       raw;
-			CRawFormatDlg dlg;
-			int           format=0, width=0, height=0;
-			CString       strOutputFilename;
-
-			cfile.Open(m_strInputFileName, CFile::modeRead | CFile::typeBinary);
-			raw.SetBufferSize(cfile.GetLength());
-			cfile.Read(raw.GetBuffer(), cfile.GetLength());
-			if (IDOK == dlg.DoModal()) {
-				format = dlg.GetFormat();
-				dlg.GetWidthHeight(&width, &height);
-			}
-			raw.SetFormat(format, width, height);
-			raw.WriteToBMP(m_strBMPFileName);
-			break;
-
 	}
 
 	Invalidate();
@@ -767,7 +770,6 @@ VALUES(\n");
 	return;
 }
 
-
 int CImageAnalyzerView::GenerateBMP(CString strFileName, CString strBMPFileName)
 {
 	//CString strBMPFileName(_T(""));
@@ -814,6 +816,40 @@ int CImageAnalyzerView::GenerateBMP(CString strFileName, CString strBMPFileName)
 	return 0;
 }
 
+int CImageAnalyzerView::GenerateBMP_from_RAW(CString strFileName, CString strBMPFileName)
+{
+	CFile         cfile;
+	Img_RAW       raw;
+	BMP           bmp;
+	CRawFormatDlg dlg;
+	int           format = 0, width = 0, height = 0;
+	CString       strOutputFilename;
+	int           i;
+
+	cfile.Open(m_strInputFileName, CFile::modeRead | CFile::typeBinary);
+	raw.SetBufferSize(cfile.GetLength());
+	cfile.Read(raw.GetBuffer(), cfile.GetLength());
+	if (IDOK == dlg.DoModal()) {
+		format = dlg.GetFormat();
+		dlg.GetWidthHeight(&width, &height);
+	}
+	raw.SetFormat(format, width, height);
+
+	bmp.SetBufferSize(width, height);
+	for (i = 0; i < height; i++) {
+		bmp.SetLine(raw.GetRGB()+i*width*3, i);
+	}
+
+	{
+		FILE *fp;
+		fp = fopen("test-kill.bmp", "wb");
+		fwrite(bmp.GetBuffer(), bmp.GetBufferSize(), 1, fp);
+		fclose(fp);
+	}
+	//raw.WriteToBMP(m_strBMPFileName);
+
+	return 0;
+}
 
 CString CImageAnalyzerView::getValue(CString strFilename, CString strTag)
 {
@@ -987,4 +1023,40 @@ int CImageAnalyzerView::RecoverRect(CDC *pDC, CPoint p1, CPoint p2)
 	InvalidateRect(rect);
 
 	return 0;
+}
+
+void CImageAnalyzerView::OnActionTeacherdata()
+{
+	// TODO: ¶b¶π•[§J±z™∫©R•O≥B≤z±`¶°µ{¶°ΩX
+	m_nAction = 0;
+	return;
+}
+
+void CImageAnalyzerView::OnUpdateActionTeacherdata(CCmdUI *pCmdUI)
+{
+	// TODO: ¶b¶π•[§J±z™∫©R•OßÛ∑s UI ≥B≤z±`¶°µ{¶°ΩX
+	if (m_nAction == 0) {
+		pCmdUI->SetCheck(1);
+	}
+	else {
+		pCmdUI->SetCheck(0);
+	}
+}
+
+void CImageAnalyzerView::OnActionMeasure()
+{
+	// TODO: ¶b¶π•[§J±z™∫©R•O≥B≤z±`¶°µ{¶°ΩX
+	m_nAction = 1;
+
+}
+
+void CImageAnalyzerView::OnUpdateActionMeasure(CCmdUI *pCmdUI)
+{
+	// TODO: ¶b¶π•[§J±z™∫©R•OßÛ∑s UI ≥B≤z±`¶°µ{¶°ΩX
+	if (m_nAction == 1) {
+		pCmdUI->SetCheck(1);
+	}
+	else {
+		pCmdUI->SetCheck(0);
+	}
 }

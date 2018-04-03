@@ -43,6 +43,7 @@ protected:
 public:
 	afx_msg void OnFileOpen();
 protected:
+	int     m_nAction;
 	CString m_strInputFileName;
 	CString m_strBMPFileName;
 	CFile   m_FileBMP;
@@ -93,6 +94,7 @@ public:
 protected:
 	void SaveResult(CString strFileName);
 	int GenerateBMP(CString strFileName, CString strBMPFileName);
+	int GenerateBMP_from_RAW(CString strFileName, CString strBMPFileName);
 	CString getValue(CString strFilename, CString strTag);
 public:
 	afx_msg void OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags);
@@ -101,6 +103,11 @@ public:
 protected:
 	int DrawRect(CDC *pDC, CPoint p1, CPoint p2);
 	int RecoverRect(CDC *pDC, CPoint p1, CPoint p2);
+public:
+	afx_msg void OnActionTeacherdata();
+	afx_msg void OnUpdateActionTeacherdata(CCmdUI *pCmdUI);
+	afx_msg void OnUpdateActionMeasure(CCmdUI *pCmdUI);
+	afx_msg void OnActionMeasure();
 };
 
 #ifndef _DEBUG  // ImageAnalyzerView.cpp ¤¤ªº°»¿ùª©¥»

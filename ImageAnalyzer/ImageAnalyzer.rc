@@ -80,6 +80,11 @@ IDR_ImageAnalyzerTYPE   ICON                    "res\\ImageAnalyzerDoc.ico"
 
 IDR_MAINFRAME MENU
 BEGIN
+    POPUP "功能(&A)"
+    BEGIN
+        MENUITEM "&Teacher Data",               ID_ACTION_TEACHERDATA
+        MENUITEM "Measure RGB (&M)",            ID_ACTION_MEASURE, CHECKED
+    END
     POPUP "檔案(&F)"
     BEGIN
         MENUITEM "開新檔案(&N)\tCtrl+N",            ID_FILE_NEW
@@ -87,7 +92,7 @@ BEGIN
         MENUITEM "儲存檔案(&S)\tCtrl+S",            ID_FILE_SAVE
         MENUITEM "另存新檔(&A)...",                 ID_FILE_SAVE_AS
         MENUITEM SEPARATOR
-        MENUITEM "最近使用的檔案",                     ID_FILE_MRU_FILE1, GRAYED
+        MENUITEM "最近使用的檔案",                     ID_FILE_MRU_FILE1
         MENUITEM SEPARATOR
         MENUITEM "結束(&X)",                      ID_APP_EXIT
     END
@@ -345,7 +350,7 @@ BEGIN
     LTEXT           "Width : ",IDC_STATIC,9,24,35,10
     LTEXT           "Height : ",IDC_STATIC,9,37,35,10
     EDITTEXT        IDC_EDIT_WIDTH,69,23,40,12,ES_AUTOHSCROLL
-    EDITTEXT        IDC_EDIT_HEIGH,69,37,40,12,ES_AUTOHSCROLL
+    EDITTEXT        IDC_EDIT_HEIGHT,69,37,40,12,ES_AUTOHSCROLL
 END
 
 
