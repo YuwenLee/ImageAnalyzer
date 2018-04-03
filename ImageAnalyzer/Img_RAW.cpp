@@ -19,7 +19,8 @@ Img_RAW::Img_RAW()
 	, m_pRGB(NULL)
 	, m_uSize(0)
 {
-
+	m_nDebugRAW = 0;
+	m_nDebugBMP = 0;
 }
 
 Img_RAW::~Img_RAW()
@@ -111,16 +112,17 @@ int Img_RAW::SetFormat(int nFormat, int nWidth, int nHeight)
 		m_pData = NULL;
 	}
 
-	{
+	if(m_nDebugRAW) {
 		FILE *fp = fopen("temp.raw", "wb");
 		fwrite(m_pUnpackedData, m_uSize, 1, fp);
 		fclose(fp);
 	}
 	
-	{
-		m_pRGB = (unsigned char *)malloc(m_nWidth*m_nHeight * 3);
-		TransferToBMP(m_pUnpackedData, m_nWidth, m_nHeight, m_pRGB);
-		//bmp_write(m_pRGB, m_nWidth, m_nHeight, "temp.bmp");
+	m_pRGB = (unsigned char *)malloc(m_nWidth*m_nHeight * 3);
+	RGB_Interpolation(m_pUnpackedData, m_nWidth, m_nHeight, m_pRGB);
+
+	if(m_nDebugBMP) {
+		WriteToBMP(m_pRGB, m_nWidth, m_nHeight, "temp.bmp");
 	}
 	return 0;
 }
@@ -128,7 +130,6 @@ int Img_RAW::SetFormat(int nFormat, int nWidth, int nHeight)
 
 int Img_RAW::GetPixel(int x, int y)
 {
-	
 	return 0;
 }
 
@@ -136,6 +137,16 @@ int Img_RAW::GetPixel(int x, int y)
 unsigned char * Img_RAW::GetBuffer()
 {
 	return m_pData;
+}
+
+unsigned char * Img_RAW::GetUnpackedBuffer()
+{
+	return m_pUnpackedData;
+}
+
+unsigned char * Img_RAW::GetRGB()
+{
+	return m_pRGB;
 }
 
 int Img_RAW::WriteToBMP(CString strFileName, int nOverwrite)
@@ -321,7 +332,7 @@ int Img_RAW::WriteToBMP(CString strFileName, int nOverwrite)
 	return nError;
 }
 
-int Img_RAW::TransferToBMP(unsigned char *pRAW, int nWidth, int nHeight, unsigned char *pRGB)
+int Img_RAW::RGB_Interpolation(unsigned char *pRAW, int nWidth, int nHeight, unsigned char *pRGB)
 {
 	unsigned int   src_stride = nWidth*2;
 	unsigned int   rgb_stride = nWidth*3;
@@ -344,23 +355,35 @@ int Img_RAW::TransferToBMP(unsigned char *pRAW, int nWidth, int nHeight, unsigne
 		}
 	}
 
+	//
+	// qc_imag_bay2rgb10
+	//
+	// Bayer Patter             Interpolated
+	// Assume GRBG              RGB
+	// +----+----+----+----+    
+	// | G0 | R1 | G2 | R3 |    
+	// +----I1---I2---I3---+    I1 = R1 + G0 + B4
+	// | B4 | G5 | B6 | G7 |
+	// +----+----+----+----+
+	//
 	buf = (unsigned char *)malloc(nWidth*nHeight*3);
     qc_imag_bay2rgb10(pRAW, src_stride, buf, nWidth*3, nWidth, nHeight, 3);
 
-	if ((m_nFormat== bayer_grbg_10bit_packed) || (m_nFormat== bayer_grbg_10bit_packed))
+	if ((m_nFormat == bayer_grbg_10bit_packed) || (m_nFormat == bayer_grbg_10bit_unpacked))
 	{
 		s_nSwaprb = 1;
 	}
-	else if ((m_nFormat == bayer_gbrg_10bit_packed) || (m_nFormat == bayer_gbrg_10bit_packed)) {
-		s_nSwaprb = 0;
+	else if ((m_nFormat == bayer_gbrg_10bit_packed) || (m_nFormat == bayer_gbrg_10bit_unpacked)) {
+		s_nSwaprb = 2;
 	}
 
 	for (dst_y = 0; dst_y<nHeight; dst_y++) {
 		for (dst_x = 0; dst_x<nWidth; dst_x++) {
 			ptr = buf + nWidth * 3 * dst_y + dst_x * 3;
-			pRGB[dst_y*rgb_stride + 3 * dst_x + 0] = s_nSwaprb ? ptr[2] : ptr[0];
-			pRGB[dst_y*rgb_stride + 3 * dst_x + 1] = ptr[1];
-			pRGB[dst_y*rgb_stride + 3 * dst_x + 2] = s_nSwaprb ? ptr[0] : ptr[2];
+			// The order of bytes in BMP file is BGR
+			pRGB[dst_y*rgb_stride + 3 * dst_x + 0] = s_nSwaprb ? ptr[2] : ptr[0]; // B
+			pRGB[dst_y*rgb_stride + 3 * dst_x + 1] = ptr[1];                      // G
+			pRGB[dst_y*rgb_stride + 3 * dst_x + 2] = s_nSwaprb ? ptr[0] : ptr[2]; // R
 		}
 	}
 	free(buf);
@@ -368,7 +391,7 @@ int Img_RAW::TransferToBMP(unsigned char *pRAW, int nWidth, int nHeight, unsigne
 }
 
 
-void Img_RAW::bmp_write(unsigned char *image, int width, int height, char *filename)
+void Img_RAW::WriteToBMP(unsigned char *image, int width, int height, char *filename)
 {
 	FILE            *fp;
 	BITMAPFILEHEADER bfh;
@@ -389,7 +412,7 @@ void Img_RAW::bmp_write(unsigned char *image, int width, int height, char *filen
 
 	p_img_with_padding = (unsigned char *)malloc(img_size_with_padding);
 	if (p_img_with_padding == NULL) {
-		//error("[bmp_write] Out of memory for (p_img_with_padding)\n");
+		//error("[WriteToBMP] Out of memory for (p_img_with_padding)\n");
 		return;
 	}
 	memset(p_img_with_padding, 0, img_size_with_padding);

@@ -13,6 +13,8 @@ typedef enum {
 class Img_RAW
 {
 private:
+	int            m_nDebugRAW;
+	int            m_nDebugBMP;
 	static int     s_nBrightness; /* 24.8 fixed point */;
 	static int     s_nSwaprb;
 
@@ -21,7 +23,7 @@ private:
 	void qc_imag_writergb10(void *addr, int bpp, unsigned short r, unsigned short g, unsigned short b);
 	void qc_imag_bay2rgb_cottnoip10(unsigned short *bay, int bay_line, unsigned char *rgb, int rgb_line, int columns, int rows, int bpp);
 
-	void bmp_write(unsigned char *pRGB, int nWidth, int nHeight, char *fname);
+	void WriteToBMP(unsigned char *pRGB, int nWidth, int nHeight, char *fname);
 
 protected:
     int            m_nWidth;
@@ -32,7 +34,7 @@ protected:
     unsigned int   m_uSize;
     int            m_nFormat;
 
-	int TransferToBMP(unsigned char *pRAW, int nWidth, int nHeight, unsigned char *pRGB);
+	int RGB_Interpolation(unsigned char *pRAW, int nWidth, int nHeight, unsigned char *pRGB);
 
 public:
     Img_RAW();
@@ -42,6 +44,8 @@ public:
 	int WriteToBMP(CString strFileName, int nOverwrite=0);
     int GetPixel(int x, int y);
     unsigned char * GetBuffer();
+	unsigned char * GetUnpackedBuffer();
+	unsigned char * GetRGB();
 };
 
 #endif //_170313_IMG_RAW_
