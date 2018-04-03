@@ -44,17 +44,66 @@ BMP::~BMP()
 
 int BMP::SetBufferSize(unsigned int uSize)
 {
+	_BITMAPFILEHEADER_ *bfh;
+
 	if (m_pData) {
 		free(m_pData);
 		m_pData = NULL;
+		m_uSize = 0;
 	}
 
 	m_pData = (unsigned char *)malloc(uSize);
 	if (m_pData == NULL) {
+		m_uSize = 0;
 		return -1;
 	}
+	
+	m_uSize = uSize;
+	memset(m_pData, 0, m_uSize);
+
+	bfh = (_BITMAPFILEHEADER_*)m_pData;
+
+	// Assume Little Endian
+	bfh->bfType = 0x4d42;
+	bfh->bfSize = m_uSize; // total file size
+	bfh->bfReserved1 = 0;
+	bfh->bfReserved2 = 0;
+	bfh->bfOffBits = sizeof(_BITMAPFILEHEADER_) + sizeof(_BITMAPINFOHEADER_); // headers' size;
 
 	return 0;
+}
+
+int BMP::SetBufferSize(int nWidth, int nHeight)
+{
+	_BITMAPINFOHEADER_ *bih;
+	unsigned int        uLineSize;
+	unsigned int        uTotalSize;
+	int                 nErr = -1;
+
+	uLineSize = (((unsigned int)nWidth * 3 + 3) / 4) * 4; // aligned to 4 bytes
+	uTotalSize = sizeof(_BITMAPFILEHEADER_) + sizeof(_BITMAPINFOHEADER_) + uLineSize*(unsigned int)nHeight;
+	nErr = SetBufferSize(uTotalSize);
+	if (nErr) {
+		return nErr;
+	}
+	
+	n_width = nWidth;
+	n_height = nHeight;
+	
+	bih = (_BITMAPINFOHEADER_ *)GetInfoHeader();
+	bih->biSize = sizeof(_BITMAPINFOHEADER_);
+	bih->biBitCount = 24;
+	bih->biClrImportant = 0;
+	bih->biClrUsed = 0;
+	bih->biCompression = 0;
+	bih->biWidth = n_width;
+	bih->biHeight = n_height;
+	bih->biPlanes = 1;
+	bih->biSizeImage = uLineSize*(unsigned int)nHeight;
+	bih->biXPelsPerMeter = 0x0ec4;
+	bih->biYPelsPerMeter = 0x0ec4;
+
+	return nErr;
 }
 
 int BMP::GetWidth()
@@ -113,7 +162,7 @@ int BMP::GetAVG_R(int x, int y, int w, int h)
 	int            nImgWidth;
 	int            nLinePadding;
 	int            nLineBytes;
-	int            i, j, k;
+	int            i, j;
 
 	avrg = 0;
 	ptr = GetRGB();
@@ -146,7 +195,7 @@ int BMP::GetAVG_G(int x, int y, int w, int h)
 	int            nImgWidth;
 	int            nLinePadding;
 	int            nLineBytes;
-	int            i, j, k;
+	int            i, j;
 
 	avrg = 0;
 	ptr = GetRGB();
@@ -182,7 +231,7 @@ int BMP::GetAVG_B(int x, int y, int w, int h)
 	int            nImgWidth;
 	int            nLinePadding;
 	int            nLineBytes;
-	int            i, j, k;
+	int            i, j;
 
 	avrg = 0;
 	ptr = GetRGB();
@@ -206,4 +255,33 @@ int BMP::GetAVG_B(int x, int y, int w, int h)
 	avrg = avrg * 1000 / (w*h);
 
 	return avrg;
+}
+
+int BMP::SetLine(unsigned char *pRGB, int nLine)
+{
+	unsigned int   uX, y_src, y_dst;
+	unsigned int   uLineSize, uDataSize;
+	unsigned char *pDst = GetRGB();
+
+	uDataSize = n_width * 3;
+	uLineSize = ((uDataSize + 3) / 4) * 4;
+
+	// Write the 1st source line to the last destination line
+	y_dst = n_height - 1 - nLine;
+	pDst += y_dst*uLineSize;
+	for (uX = 0; uX < uDataSize; uX++) {
+		pDst[uX] = pRGB[uX];
+	}
+
+	return 0;
+}
+
+unsigned char * BMP::GetBuffer()
+{
+	return m_pData;
+}
+
+unsigned int BMP::GetBufferSize()
+{
+	return m_uSize;
 }

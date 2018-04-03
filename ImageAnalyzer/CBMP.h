@@ -6,8 +6,8 @@
 class BMP
 {
 protected:
-	int n_width;
-	int n_height;
+	int            n_width;
+	int            n_height;
 	unsigned char *m_pData;
 	unsigned int   m_uSize;
 
@@ -15,14 +15,18 @@ public:
 	BMP();
 	~BMP();
 	int SetBufferSize(unsigned int uSize);
+	int SetBufferSize(int nWidth, int nHeight);
 	int GetWidth();
 	int GetHeight();
-	unsigned char * GetRGB();
 	unsigned char * GetFileHeader();
 	unsigned char * GetInfoHeader();
+	unsigned char * GetRGB();
+	unsigned char * GetBuffer();
+	unsigned int GetBufferSize();
 	int GetAVG_R(int x, int y, int w, int h);
 	int GetAVG_G(int x, int y, int w, int h);
 	int GetAVG_B(int x, int y, int w, int h);
+	int SetLine(unsigned char *pRGB, int nLine);
 };
 
 #endif //_170313_CBMP_
