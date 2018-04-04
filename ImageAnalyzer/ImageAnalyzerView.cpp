@@ -223,7 +223,7 @@ void CImageAnalyzerView::OnFileOpen()
 		((m_strInputFileName.GetAt(j - 2) & 0xDF) == 'P') &&
 		((m_strInputFileName.GetAt(j - 1) & 0xDF) == 'G'))
 	{
-		GenerateBMP(m_strInputFileName, m_strBMPFileName);
+		JPG_to_BMP(m_strInputFileName, m_strBMPFileName);
 		pic_type = 1;
 	}
 	else if (((m_strInputFileName.GetAt(j - 3) & 0xDF) == 'B') &&
@@ -252,7 +252,7 @@ void CImageAnalyzerView::OnFileOpen()
 
 		pic_type = 3;
 
-		GenerateBMP_from_RAW(m_strInputFileName, m_strBMPFileName);
+		RAW_to_BMP(m_strInputFileName, m_strBMPFileName);
 	}
 
 	//
@@ -770,7 +770,7 @@ VALUES(\n");
 	return;
 }
 
-int CImageAnalyzerView::GenerateBMP(CString strFileName, CString strBMPFileName)
+int CImageAnalyzerView::JPG_to_BMP(CString strFileName, CString strBMPFileName)
 {
 	//CString strBMPFileName(_T(""));
 	CString strCmd;
@@ -816,7 +816,7 @@ int CImageAnalyzerView::GenerateBMP(CString strFileName, CString strBMPFileName)
 	return 0;
 }
 
-int CImageAnalyzerView::GenerateBMP_from_RAW(CString strFileName, CString strBMPFileName)
+int CImageAnalyzerView::RAW_to_BMP(CString strFileName, CString strBMPFileName)
 {
 	CFile         cfile;
 	Img_RAW       raw;
@@ -827,8 +827,8 @@ int CImageAnalyzerView::GenerateBMP_from_RAW(CString strFileName, CString strBMP
 	int           i;
 
 	cfile.Open(m_strInputFileName, CFile::modeRead | CFile::typeBinary);
-	raw.SetBufferSize(cfile.GetLength());
-	cfile.Read(raw.GetBuffer(), cfile.GetLength());
+	raw.SetBufferSize((unsigned int)cfile.GetLength());
+	cfile.Read(raw.GetBuffer(), (unsigned int)cfile.GetLength());
 	if (IDOK == dlg.DoModal()) {
 		format = dlg.GetFormat();
 		dlg.GetWidthHeight(&width, &height);

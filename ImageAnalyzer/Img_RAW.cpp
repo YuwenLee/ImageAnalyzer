@@ -332,65 +332,6 @@ int Img_RAW::WriteToBMP(CString strFileName, int nOverwrite)
 	return nError;
 }
 
-int Img_RAW::RGB_Interpolation(unsigned char *pRAW, int nWidth, int nHeight, unsigned char *pRGB)
-{
-	unsigned int   src_stride = nWidth*2;
-	unsigned int   rgb_stride = nWidth*3;
-	unsigned char *buf;
-	int            dst_x, dst_y;
-	int            shift = 0;
-	unsigned char *ptr = pRAW;
-
-	for (dst_y = 0; dst_y<nHeight; dst_y++) {
-		for (dst_x = 0; dst_x<nWidth; dst_x++) {
-			int v = ptr[0] | ptr[1] << 8; // The expected format is little-endian 
-			v *= s_nBrightness;
-			v >>= 8;
-			if (v < 0) v = 0;
-			if (v >= (1 << 10)) v = (1 << 10) - 1;
-			ptr[0] = v & 0x000000FF;
-			ptr[1] = (v & 0x0000FF00) >> 8;
-
-			ptr += 2;
-		}
-	}
-
-	//
-	// qc_imag_bay2rgb10
-	//
-	// Bayer Patter             Interpolated
-	// Assume GRBG              RGB
-	// +----+----+----+----+    
-	// | G0 | R1 | G2 | R3 |    
-	// +----I1---I2---I3---+    I1 = R1 + G0 + B4
-	// | B4 | G5 | B6 | G7 |
-	// +----+----+----+----+
-	//
-	buf = (unsigned char *)malloc(nWidth*nHeight*3);
-    qc_imag_bay2rgb10(pRAW, src_stride, buf, nWidth*3, nWidth, nHeight, 3);
-
-	if ((m_nFormat == bayer_grbg_10bit_packed) || (m_nFormat == bayer_grbg_10bit_unpacked))
-	{
-		s_nSwaprb = 1;
-	}
-	else if ((m_nFormat == bayer_gbrg_10bit_packed) || (m_nFormat == bayer_gbrg_10bit_unpacked)) {
-		s_nSwaprb = 2;
-	}
-
-	for (dst_y = 0; dst_y<nHeight; dst_y++) {
-		for (dst_x = 0; dst_x<nWidth; dst_x++) {
-			ptr = buf + nWidth * 3 * dst_y + dst_x * 3;
-			// The order of bytes in BMP file is BGR
-			pRGB[dst_y*rgb_stride + 3 * dst_x + 0] = s_nSwaprb ? ptr[2] : ptr[0]; // B
-			pRGB[dst_y*rgb_stride + 3 * dst_x + 1] = ptr[1];                      // G
-			pRGB[dst_y*rgb_stride + 3 * dst_x + 2] = s_nSwaprb ? ptr[0] : ptr[2]; // R
-		}
-	}
-	free(buf);
-	return 0;
-}
-
-
 void Img_RAW::WriteToBMP(unsigned char *image, int width, int height, char *filename)
 {
 	FILE            *fp;
@@ -557,6 +498,64 @@ void Img_RAW::WriteToBMP(unsigned char *image, int width, int height, char *file
 	}
 	fclose(fp);
 	return;
+}
+
+int Img_RAW::RGB_Interpolation(unsigned char *pRAW, int nWidth, int nHeight, unsigned char *pRGB)
+{
+	unsigned int   src_stride = nWidth*2;
+	unsigned int   rgb_stride = nWidth*3;
+	unsigned char *buf;
+	int            dst_x, dst_y;
+	int            shift = 0;
+	unsigned char *ptr = pRAW;
+
+	for (dst_y = 0; dst_y<nHeight; dst_y++) {
+		for (dst_x = 0; dst_x<nWidth; dst_x++) {
+			int v = ptr[0] | ptr[1] << 8; // The expected format is little-endian 
+			v *= s_nBrightness;
+			v >>= 8;
+			if (v < 0) v = 0;
+			if (v >= (1 << 10)) v = (1 << 10) - 1;
+			ptr[0] = v & 0x000000FF;
+			ptr[1] = (v & 0x0000FF00) >> 8;
+
+			ptr += 2;
+		}
+	}
+
+	//
+	// qc_imag_bay2rgb10
+	//
+	// Bayer Patter             Interpolated
+	// Assume GRBG              RGB
+	// +----+----+----+----+    
+	// | G0 | R1 | G2 | R3 |    
+	// +----I1---I2---I3---+    I1 = R1 + G0 + B4
+	// | B4 | G5 | B6 | G7 |
+	// +----+----+----+----+
+	//
+	buf = (unsigned char *)malloc(nWidth*nHeight*3);
+    qc_imag_bay2rgb10(pRAW, src_stride, buf, nWidth*3, nWidth, nHeight, 3);
+
+	if ((m_nFormat == bayer_grbg_10bit_packed) || (m_nFormat == bayer_grbg_10bit_unpacked))
+	{
+		s_nSwaprb = 1;
+	}
+	else if ((m_nFormat == bayer_gbrg_10bit_packed) || (m_nFormat == bayer_gbrg_10bit_unpacked)) {
+		s_nSwaprb = 2;
+	}
+
+	for (dst_y = 0; dst_y<nHeight; dst_y++) {
+		for (dst_x = 0; dst_x<nWidth; dst_x++) {
+			ptr = buf + nWidth * 3 * dst_y + dst_x * 3;
+			// The order of bytes in BMP file is BGR
+			pRGB[dst_y*rgb_stride + 3 * dst_x + 0] = s_nSwaprb ? ptr[2] : ptr[0]; // B
+			pRGB[dst_y*rgb_stride + 3 * dst_x + 1] = ptr[1];                      // G
+			pRGB[dst_y*rgb_stride + 3 * dst_x + 2] = s_nSwaprb ? ptr[0] : ptr[2]; // R
+		}
+	}
+	free(buf);
+	return 0;
 }
 
 /* bay_line = image stride in the RAW data in bytes */
