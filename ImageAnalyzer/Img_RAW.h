@@ -24,6 +24,7 @@ private:
 	void qc_imag_bay2rgb_cottnoip10(unsigned short *bay, int bay_line, unsigned char *rgb, int rgb_line, int columns, int rows, int bpp);
 
 	void WriteToBMP(unsigned char *pRGB, int nWidth, int nHeight, char *fname);
+	int WriteToBMP(CString strFileName, int nOverwrite = 0);
 
 protected:
     int            m_nWidth;
@@ -41,7 +42,6 @@ public:
     ~Img_RAW();
     int SetBufferSize(unsigned int uSize);
     int SetFormat(int nFormat, int nWidth, int nHeight);
-	int WriteToBMP(CString strFileName, int nOverwrite=0);
     int GetPixel(int x, int y);
     unsigned char * GetBuffer();
 	unsigned char * GetUnpackedBuffer();
