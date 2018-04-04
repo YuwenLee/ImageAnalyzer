@@ -63,7 +63,7 @@ CImageAnalyzerView::CImageAnalyzerView()
 		m_B[i] = 0;
 		m_G[i] = 0;
 		m_R[i] = 0;
-		m_L[i] = 0.000001;
+		m_L[i] = (float)0.0001;
 	}
 
 	m_nAction = 1; // Measure RGB
@@ -237,22 +237,8 @@ void CImageAnalyzerView::OnFileOpen()
 	         ((m_strInputFileName.GetAt(j - 2) & 0xDF) == 'A') &&
 	         ((m_strInputFileName.GetAt(j - 1) & 0xDF) == 'W'))
 	{
-		int     i, j;
-
-		m_strBMPFileName = m_strInputFileName;
-		for (i = j = m_strInputFileName.GetLength(); i; i--) {
-			if (m_strBMPFileName[i] == '.') {
-				break;
-			}
-		}
-
-		m_strBMPFileName.GetBuffer()[++i] = 'b';
-		m_strBMPFileName.GetBuffer()[++i] = 'm';
-		m_strBMPFileName.GetBuffer()[++i] = 'p';
-
-		pic_type = 3;
-
 		RAW_to_BMP(m_strInputFileName, m_strBMPFileName);
+		pic_type = 3;
 	}
 
 	//
@@ -417,7 +403,7 @@ void CImageAnalyzerView::OnLButtonUp(UINT nFlags, CPoint point)
 		m_G[m_MeasureCnt] = m_nAVRGg / 1000;
 		m_B[m_MeasureCnt] = m_nAVRGb / 1000;
 
-		m_L[m_MeasureCnt] = pow( (m_R[m_MeasureCnt]*m_R[m_MeasureCnt]*0.299) + 
+		m_L[m_MeasureCnt] = (float)pow( (m_R[m_MeasureCnt]*m_R[m_MeasureCnt]*0.299) + 
 			                     (m_G[m_MeasureCnt]*m_G[m_MeasureCnt]*0.587) + 
 			                     (m_B[m_MeasureCnt]*m_B[m_MeasureCnt]*0.114), 
 			                     0.5 );
@@ -722,7 +708,7 @@ VALUES(\n");
 		strInputFileName = m_strInputFileName;
 		for (i = 0; i < strInputFileName.GetLength(); i++) {
 			if (strInputFileName.GetBuffer()[i] == '\\') {
-				strInputFileName.GetBuffer()[i] = '\/';
+				strInputFileName.GetBuffer()[i] = '/';
 			}
 		}
 		strValues.Format(L"'%s', ", strInputFileName);
@@ -736,7 +722,7 @@ VALUES(\n");
 		for (i = 0; i < 6; i++) {
 			CString str;
 			int     nLight;
-			nLight = pow((m_R[i] * m_R[i] * 0.299) + (m_G[i] * m_G[i] * 0.587) + (m_B[i] * m_B[i] * 0.114), 0.5);
+			nLight = (int)pow((m_R[i] * m_R[i] * 0.299) + (m_G[i] * m_G[i] * 0.587) + (m_B[i] * m_B[i] * 0.114), 0.5);
 			str.Format(L"%d, ", nLight);
 			strValues += str;
 		}
@@ -775,23 +761,7 @@ int CImageAnalyzerView::JPG_to_BMP(CString strFileName, CString strBMPFileName)
 	//CString strBMPFileName(_T(""));
 	CString strCmd;
 	char    szCmd[1024];
-	int     i, j;
-
-	/*
-	strBMPFileName = strFileName;
-	for (i = j = m_strInputFileName.GetLength(); i; i--) {
-		if (strBMPFileName[i] == '.') {
-			break;
-		}
-	}
-	if (i == 0) {
-		return strBMPFileName;
-	}
-	
-	strBMPFileName.GetBuffer()[++i] = 'b';
-	strBMPFileName.GetBuffer()[++i] = 'm';
-	strBMPFileName.GetBuffer()[++i] = 'p';
-	*/
+	int     i;
 
 	// ffmpeg -i IMG20170712151728.jpg -frames 1 -pix_fmt bgr24 -y IMG20170712151728.bmp
 	strCmd.Format(_T(".\\ffmpeg -i "));
@@ -818,7 +788,7 @@ int CImageAnalyzerView::JPG_to_BMP(CString strFileName, CString strBMPFileName)
 
 int CImageAnalyzerView::RAW_to_BMP(CString strFileName, CString strBMPFileName)
 {
-	CFile         cfile;
+	CFile         file;
 	Img_RAW       raw;
 	BMP           bmp;
 	CRawFormatDlg dlg;
@@ -826,13 +796,15 @@ int CImageAnalyzerView::RAW_to_BMP(CString strFileName, CString strBMPFileName)
 	CString       strOutputFilename;
 	int           i;
 
-	cfile.Open(m_strInputFileName, CFile::modeRead | CFile::typeBinary);
-	raw.SetBufferSize((unsigned int)cfile.GetLength());
-	cfile.Read(raw.GetBuffer(), (unsigned int)cfile.GetLength());
+	file.Open(strFileName, CFile::modeRead | CFile::typeBinary);
+	raw.SetBufferSize((unsigned int)file.GetLength());
+	file.Read(raw.GetBuffer(), (unsigned int)file.GetLength());
 	if (IDOK == dlg.DoModal()) {
 		format = dlg.GetFormat();
 		dlg.GetWidthHeight(&width, &height);
 	}
+	file.Close();
+
 	raw.SetFormat(format, width, height);
 
 	bmp.SetBufferSize(width, height);
@@ -840,13 +812,9 @@ int CImageAnalyzerView::RAW_to_BMP(CString strFileName, CString strBMPFileName)
 		bmp.SetLine(raw.GetRGB()+i*width*3, i);
 	}
 
-	{
-		FILE *fp;
-		fp = fopen("test-kill.bmp", "wb");
-		fwrite(bmp.GetBuffer(), bmp.GetBufferSize(), 1, fp);
-		fclose(fp);
-	}
-	//raw.WriteToBMP(m_strBMPFileName);
+	file.Open(strBMPFileName, CFile::modeWrite | CFile::typeBinary);
+	file.Write(bmp.GetBuffer(), bmp.GetBufferSize());
+	file.Close();
 
 	return 0;
 }
@@ -942,7 +910,7 @@ void CImageAnalyzerView::OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags)
 		for (i = 0; i < l; i++) {
 			dir.GetBuffer()[i] = m_strInputFileName[i];
 		}
-		cmd.Format(L"move %s %s\M\\", m_strInputFileName, dir);
+		cmd.Format(L"move %s %s\\M\\", m_strInputFileName, dir);
 		_wsystem(cmd);
 	}
 
