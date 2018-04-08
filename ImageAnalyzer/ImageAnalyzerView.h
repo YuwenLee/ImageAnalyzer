@@ -44,6 +44,7 @@ public:
 	afx_msg void OnFileOpen();
 protected:
 	int     m_nAction;
+	int     m_nZoomPercent;
 	CString m_strInputFileName;
 	CString m_strBMPFileName;
 	CFile   m_FileBMP;
@@ -85,6 +86,20 @@ private:
 	float  m_L[6];
 	CRect  m_RectMeasureRGB[6];
 
+	//
+	// Calibration Data
+	//
+	int     m_nCalibrationCnt;     // max value 20
+	int     m_nVertex;             // max value 4
+	CString m_strILL_Name[20];     // file names
+	CPoint  m_MCC_Vertices[20][4]; // MCCs
+	int     m_nILL_CTT[20];        // Color Temperatures
+	float   m_fduv[20];            // delta UVs
+	CPoint  m_ptCal[20][2];
+	int     m_nCalR[20];
+	int     m_nCalG[20];
+	int     m_nCalB[20];
+	
 public:
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
 	afx_msg void OnSize(UINT nType, int cx, int cy);
@@ -95,6 +110,15 @@ protected:
 	void SaveResult(CString strFileName);
 	int JPG_to_BMP(CString strFileName, CString strBMPFileName);
 	int RAW_to_BMP(CString strFileName, CString strBMPFileName);
+	int MeasureRGB(CPoint point);
+	int ReMeasureRGB();
+	int SaveRGB();
+	int MeasureCalibrationData_FileOpen();
+	int MeasureCalibrationData(CPoint point);
+	int ReMeasureCalibrationData();
+	int MeasureWBGain(CPoint point);
+	int SaveCalibration();
+	int LoadBMPFile(CString strFileName);
 	CString getValue(CString strFilename, CString strTag);
 public:
 	afx_msg void OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags);
@@ -108,6 +132,10 @@ public:
 	afx_msg void OnUpdateActionTeacherdata(CCmdUI *pCmdUI);
 	afx_msg void OnUpdateActionMeasure(CCmdUI *pCmdUI);
 	afx_msg void OnActionMeasure();
+	afx_msg void OnZoomIn();
+	afx_msg void OnZoomOut();
+	afx_msg void OnUpdateActionCalibration(CCmdUI *pCmdUI);
+	afx_msg void OnActionCalibration();
 };
 
 #ifndef _DEBUG  // ImageAnalyzerView.cpp ¤¤ªº°»¿ùª©¥»

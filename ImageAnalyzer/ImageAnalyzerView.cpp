@@ -1,9 +1,9 @@
 
-// ImageAnalyzerView.cpp : CImageAnalyzerView Ãþ§Oªº?E@
+// ImageAnalyzerView.cpp : CImageAnalyzerView Ãþ§Oªº¹ê§@
 //
 
 #include "stdafx.h"
-// SHARED_HANDLERS ¥i¥H©w¸q¦b?E@¹wÄý¡BÁY¹Ï©M·j´M¿z?Eø¥ó³B²z±`¦¡ªº
+// SHARED_HANDLERS ¥i¥H©w¸q¦b¹ê§@¹wÄý¡BÁY¹Ï©M·j´M¿z¿ï±ø¥ó³B²z±`¦¡ªº
 // ATL ±M®×¤¤¡A¨Ã¤¹³\»P¸Ó±M®×¦@¥Î¤å¥óµ{¦¡½X¡C
 #ifndef SHARED_HANDLERS
 #include "ImageAnalyzer.h"
@@ -18,6 +18,11 @@
 #define new DEBUG_NEW
 #endif
 
+enum ImageAnalyzer_Action {
+	Action_MeasuringCalibrationData = 0,
+	Action_MeasuringTeacherData,
+	Action_MeasuringRGB
+};
 
 // CImageAnalyzerView
 
@@ -37,6 +42,10 @@ BEGIN_MESSAGE_MAP(CImageAnalyzerView, CScrollView)
 	ON_UPDATE_COMMAND_UI(ID_ACTION_TEACHERDATA, &CImageAnalyzerView::OnUpdateActionTeacherdata)
 	ON_UPDATE_COMMAND_UI(ID_ACTION_MEASURE, &CImageAnalyzerView::OnUpdateActionMeasure)
 	ON_COMMAND(ID_ACTION_MEASURE, &CImageAnalyzerView::OnActionMeasure)
+	ON_COMMAND(ID_ZOOM_IN, &CImageAnalyzerView::OnZoomIn)
+	ON_COMMAND(ID_ZOOM_OUT, &CImageAnalyzerView::OnZoomOut)
+	ON_UPDATE_COMMAND_UI(ID_ACTION_CALIBRATION, &CImageAnalyzerView::OnUpdateActionCalibration)
+	ON_COMMAND(ID_ACTION_CALIBRATION, &CImageAnalyzerView::OnActionCalibration)
 END_MESSAGE_MAP()
 
 // CImageAnalyzerView «Øºc/¸Ñºc
@@ -58,7 +67,7 @@ CImageAnalyzerView::CImageAnalyzerView()
 	, m_MeasureCnt(0)
 {
 	// TODO: ¦b¦¹¥[¤J«Øºcµ{¦¡½X
-	int i;
+	int i, j;
 	for (i = 0; i < 6; i++) {
 		m_B[i] = 0;
 		m_G[i] = 0;
@@ -66,7 +75,30 @@ CImageAnalyzerView::CImageAnalyzerView()
 		m_L[i] = (float)0.0001;
 	}
 
-	m_nAction = 1; // Measure RGB
+	m_nAction = Action_MeasuringRGB; // Measure RGB
+	m_nZoomPercent = 100; // Picture's original size
+
+	//
+	// Calibration Data
+	//
+	m_nCalibrationCnt = 0;
+	m_nVertex = 0;
+	for (i = 0; i < 20; i++) {
+		m_strILL_Name[i].Empty();
+		m_nILL_CTT[i] = 0;
+		m_fduv[i]     = 0.0;
+		for (j = 0; j < 4; j++) {
+			m_MCC_Vertices[i][j].x = 0;
+			m_MCC_Vertices[i][j].y = 0;
+		}
+		m_ptCal[i][0].x = 0;
+		m_ptCal[i][0].y = 0;
+		m_ptCal[i][1].x = 0;
+		m_ptCal[i][1].y = 0;
+		m_nCalR[i] = 0;
+		m_nCalG[i] = 0;
+		m_nCalB[i] = 0;
+	}	
 }
 
 CImageAnalyzerView::~CImageAnalyzerView()
@@ -75,8 +107,8 @@ CImageAnalyzerView::~CImageAnalyzerView()
 
 BOOL CImageAnalyzerView::PreCreateWindow(CREATESTRUCT& cs)
 {
-	// TODO: ¦b¦¹¸g¥Ñ­×?ECREATESTRUCT cs 
-	// ¹F?E×§Eøµ¡Ãþ§O©Î¼Ë¦¡ªº¥Øªº
+	// TODO: ¦b¦¹¸g¥Ñ­×§ï CREATESTRUCT cs 
+	// ¹F¨ì­×§ïµøµ¡Ãþ§O©Î¼Ë¦¡ªº¥Øªº
 
 	return CScrollView::PreCreateWindow(cs);
 }
@@ -90,7 +122,7 @@ void CImageAnalyzerView::OnDraw(CDC* pDC)
 	if (!pDoc)
 		return;
 
-	// TODO: ¦b¦¹¥[¤J?EÍ¸EÆªº´yÃ¸µ{¦¡½X
+	// TODO: ¦b¦¹¥[¤J­ì¥Í¸ê®Æªº´yÃ¸µ{¦¡½X
 	CDC            dcMem;
 	CBitmap       *p_bmp;
 	CString        str;
@@ -104,19 +136,61 @@ void CImageAnalyzerView::OnDraw(CDC* pDC)
 	// Load BMP file to the compatible DC and copy the content to the paint DC.
 	dcMem.CreateCompatibleDC(pDC);
 	p_bmp = dcMem.SelectObject(&m_bmpGDI);
-	pDC->BitBlt(point.x, point.y, m_nViewWidth, m_nViewHeight, &dcMem, point.x, point.y, SRCCOPY);
+	//pDC->BitBlt(point.x, point.y, m_nViewWidth, m_nViewHeight, &dcMem, point.x, point.y, SRCCOPY);
+	pDC->SetStretchBltMode(HALFTONE);
+	pDC->StretchBlt(point.x, point.y, 
+		            m_nViewWidth, m_nViewHeight,
+		            &dcMem, 
+					point.x*100/m_nZoomPercent, point.y*100/m_nZoomPercent,
+					m_nViewWidth*100/m_nZoomPercent, m_nViewHeight*100/m_nZoomPercent,
+		            SRCCOPY);
 	dcMem.SelectObject(p_bmp);
 
-	pPen = pDC->SelectObject(&pen);
-	for (i = 0; i < m_MeasureCnt; i++) {
-		CPoint p1, p2;
-		p1.x = m_RectMeasureRGB[i].left;
-		p1.y = m_RectMeasureRGB[i].top;
-		p2.x = m_RectMeasureRGB[i].right;
-		p2.y = m_RectMeasureRGB[i].bottom;
-		DrawRect(pDC, p1, p2);
+	//
+	// Measuring RGB
+	//
+	if (m_nAction == Action_MeasuringRGB) {
+		pPen = pDC->SelectObject(&pen);
+		for (i = 0; i < m_MeasureCnt; i++) {
+			CPoint p1, p2;
+			p1.x = m_RectMeasureRGB[i].left*m_nZoomPercent / 100;
+			p1.y = m_RectMeasureRGB[i].top*m_nZoomPercent / 100;
+			p2.x = m_RectMeasureRGB[i].right*m_nZoomPercent / 100;
+			p2.y = m_RectMeasureRGB[i].bottom*m_nZoomPercent / 100;
+			DrawRect(pDC, p1, p2);
+		}
+		pDC->SelectObject(pPen);
 	}
-	pDC->SelectObject(pPen);
+
+	//
+	// Measuring Calibration Data
+	//
+	if (m_nAction == Action_MeasuringCalibrationData) {
+		if (m_nVertex == 1) {
+			pDC->SetPixel(m_MCC_Vertices[m_nCalibrationCnt][0].x*m_nZoomPercent / 100,
+				m_MCC_Vertices[m_nCalibrationCnt][0].y*m_nZoomPercent / 100,
+				RGB(0, 0, 255));
+		}
+		pPen = pDC->SelectObject(&pen);
+		for (i = 1; i < m_nVertex; i++) {
+			pDC->MoveTo(m_MCC_Vertices[m_nCalibrationCnt][i - 1].x*m_nZoomPercent / 100, m_MCC_Vertices[m_nCalibrationCnt][i - 1].y*m_nZoomPercent / 100);
+			pDC->LineTo(m_MCC_Vertices[m_nCalibrationCnt][i].x*m_nZoomPercent / 100, m_MCC_Vertices[m_nCalibrationCnt][i].y*m_nZoomPercent / 100);
+		}
+		if (m_nVertex == 4) {
+			pDC->MoveTo(m_MCC_Vertices[m_nCalibrationCnt][3].x*m_nZoomPercent / 100, m_MCC_Vertices[m_nCalibrationCnt][3].y*m_nZoomPercent / 100);
+			pDC->LineTo(m_MCC_Vertices[m_nCalibrationCnt][0].x*m_nZoomPercent / 100, m_MCC_Vertices[m_nCalibrationCnt][0].y*m_nZoomPercent / 100);
+		}
+		if (m_nCalR[m_nCalibrationCnt] != 0) {
+			CPoint p1, p2;
+			p1.x = m_ptCal[m_nCalibrationCnt][0].x*m_nZoomPercent/100;
+			p1.y = m_ptCal[m_nCalibrationCnt][0].y*m_nZoomPercent/100;
+			p2.x = m_ptCal[m_nCalibrationCnt][1].x*m_nZoomPercent/100;
+			p2.y = m_ptCal[m_nCalibrationCnt][1].y*m_nZoomPercent/100;
+			DrawRect(pDC, p1, p2);
+		}
+		pDC->SelectObject(pPen);
+	}
+
 	/*
 	for (i = 0; i < 6; i++) {
 		str.Format(_T("[%d] (%d, %d, %d)"), i, m_R[i], m_G[i], m_B[i]);
@@ -128,14 +202,66 @@ void CImageAnalyzerView::OnDraw(CDC* pDC)
 	//dc.TextOutW(10, 10, str);
 }
 
+int CImageAnalyzerView::LoadBMPFile(CString strFileName)
+{
+	unsigned int uSize;
+	CSize        size;
+	BOOL         bOK;
+
+	bOK = m_FileBMP.Open(strFileName, CFile::modeRead | CFile::typeBinary);
+	if (!bOK) {
+		return -1;
+	}
+
+	//
+	// Read the BMP file
+	//
+	uSize = (unsigned int)m_FileBMP.GetLength();
+	m_bmp.SetBufferSize(uSize);
+	m_FileBMP.Read(m_bmp.GetFileHeader(), uSize);
+	m_FileBMP.Close();
+
+	m_nBMPWidth  = m_bmp.GetWidth();
+	m_nBMPHeight = m_bmp.GetHeight();
+
+	//
+	// Attach the BMP file to GDI object
+	//
+	if (m_hBMP) {
+		m_bmpGDI.Detach();
+		DeleteObject(m_hBMP);
+		m_hBMP = NULL;
+	}
+
+	m_hBMP = (HBITMAP)::LoadImage(
+		GetModuleHandle(NULL),
+		strFileName,
+		IMAGE_BITMAP, 0, 0,
+		LR_DEFAULTSIZE | LR_LOADFROMFILE);
+
+	m_bmpGDI.Attach(m_hBMP);
+
+	//
+	// Set the size of scroll view
+	//
+	size.cx = m_nBMPWidth;
+	size.cy = m_nBMPHeight;
+
+	size.cx = size.cx*m_nZoomPercent/100;
+	size.cy = size.cy*m_nZoomPercent/100;
+	SetScrollSizes(MM_TEXT, size);
+
+	return 0;
+}
+
 void CImageAnalyzerView::OnInitialUpdate()
 {
 	CScrollView::OnInitialUpdate();
 
 	CSize sizeTotal;
 	// TODO: ­pºâ¦¹ÀËµøªºÁ`¤j¤p
-	sizeTotal.cx = 100;
-	sizeTotal.cy = 100;
+	sizeTotal.cx = 640;
+	sizeTotal.cy = 480;
 	SetScrollSizes(MM_TEXT, sizeTotal);
 
 	
@@ -171,20 +297,27 @@ void CImageAnalyzerView::OnFileOpen()
 	// TODO: ¦b¦¹¥[¤J±zªº©R¥O³B²z±`¦¡µ{¦¡½X
 	TCHAR       szFileFilters_JPG[] = _T("Pictures (*.jpg)|*.jpg;*.jpeg|Pictures (*.bmp)|*.bmp||");
 	TCHAR       szFileFilters_RAW[] = _T("RAW Data|*.raw||");
-	BOOL        bOK;
-	CSize       srcollSize;
+	CSize       scrollSize;
 	int         i, j;
 	int         pic_type = 0;
 	TCHAR       szTempPath[MAX_PATH + 1];
 
-	if (m_nAction == 0) {
+	if (m_nAction == Action_MeasuringCalibrationData) {
+		CFileDialog dlg(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, szFileFilters_RAW);
+		if (IDOK != dlg.DoModal()) {
+			return;
+		}
+		m_strInputFileName = dlg.GetPathName();
+		m_strILL_Name[m_nCalibrationCnt] = m_strInputFileName;
+	}
+	else if (m_nAction == Action_MeasuringTeacherData) {
 		CFileDialog dlg(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, szFileFilters_RAW);
 		if (IDOK != dlg.DoModal()) {
 			return;
 		}
 		m_strInputFileName = dlg.GetPathName();
 	}
-	else if(m_nAction == 1) {
+	else if(m_nAction == Action_MeasuringRGB) {
 		CFileDialog dlg(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, szFileFilters_JPG);
 		if (IDOK != dlg.DoModal()) {
 			return;
@@ -250,10 +383,8 @@ void CImageAnalyzerView::OnFileOpen()
 		case 1:
 		case 2:
 		case 3:
-			bOK = m_FileBMP.Open(m_strBMPFileName, CFile::modeRead | CFile::typeBinary);
-			if (!bOK) {
-				return;
-			}
+			LoadBMPFile(m_strBMPFileName);
+
 			//
 			// Prepare for the new result file name
 			//
@@ -269,45 +400,59 @@ void CImageAnalyzerView::OnFileOpen()
 				m_strResultFile.SetAt(i, 't');
 			}
 
-			//
-			// Load the Image File
-			//
-			{
-				unsigned int uSize;
-
-				uSize = (unsigned int)m_FileBMP.GetLength();
-				m_bmp.SetBufferSize(uSize);
-				m_FileBMP.Read(m_bmp.GetFileHeader(), uSize);
-				m_FileBMP.Close();
-
-				if (m_hBMP) {
-					m_bmpGDI.Detach();
-					DeleteObject(m_hBMP);
-					m_hBMP = NULL;
-				}
-
-				m_hBMP = (HBITMAP)::LoadImage(
-					GetModuleHandle(NULL),
-					m_strBMPFileName,
-					IMAGE_BITMAP, 0, 0,
-					LR_DEFAULTSIZE | LR_LOADFROMFILE);
-
-				m_bmpGDI.Attach(m_hBMP);
-
-				//
-				// Set the size of scroll view
-				//
-				m_nBMPWidth = srcollSize.cx = m_bmp.GetWidth();
-				m_nBMPHeight = srcollSize.cy = m_bmp.GetHeight();
-
-				SetScrollSizes(MM_TEXT, srcollSize);
-			}
 			break;
 	}
 
 	Invalidate();
+
+	//if (m_nAction == Action_MeasuringCalibrationData) {
+	//	MessageBox(L"Please select MCC vertices.");
+	//}
 }
 
+int CImageAnalyzerView::MeasureCalibrationData_FileOpen()
+{
+	TCHAR       szFileFilters_RAW[] = _T("RAW Data|*.raw||");
+	CFileDialog dlg(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, szFileFilters_RAW);
+
+	if (IDOK != dlg.DoModal()) {
+		if (1) {
+			CStdioFile log_file;
+			int        i, j;
+
+			if (!log_file.Open(L"cal-log.txt", CStdioFile::modeWrite | CStdioFile::typeText))
+			{
+				if (!log_file.Open(L"cal-log.txt", CStdioFile::modeCreate | CStdioFile::modeWrite | CStdioFile::typeText))
+				{
+					MessageBox(L"Failed to create log file");
+					return 0;
+				}
+			}
+			for (i = 0; i < m_nCalibrationCnt + 1; i++) {
+				log_file.WriteString(m_strILL_Name[i] + L"\n");
+				for (j = 0; j < 4; j++) {
+					CString tmp;
+					tmp.Format(L"(%d, %d)", m_MCC_Vertices[i][j].x, m_MCC_Vertices[i][j].y);
+					log_file.WriteString(tmp);
+				}
+				log_file.WriteString(L"\n");
+			}
+			log_file.Close();
+		}
+		return 0;
+	}
+
+	m_nCalibrationCnt++;
+	m_nVertex = 0;
+	m_strInputFileName = dlg.GetPathName();
+	m_strILL_Name[m_nCalibrationCnt] = m_strInputFileName;
+
+	RAW_to_BMP(m_strInputFileName, m_strBMPFileName);
+	LoadBMPFile(m_strBMPFileName);
+	Invalidate();
+
+	return 0;
+}
 
 int CImageAnalyzerView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 {
@@ -368,8 +513,6 @@ void CImageAnalyzerView::OnLButtonDown(UINT nFlags, CPoint point)
 void CImageAnalyzerView::OnLButtonUp(UINT nFlags, CPoint point)
 {
 	// TODO: ¦b¦¹¥[¤J±zªº°T®§³B²z±`¦¡µ{¦¡½X©M (©Î) ©I¥s¹w³]­È
-	CPoint ScrollPoint;
-	int    nWidth, nHeight;
 
 	if (!m_bGotButtonDown) {
 		return;
@@ -377,101 +520,18 @@ void CImageAnalyzerView::OnLButtonUp(UINT nFlags, CPoint point)
 	m_bGotButtonDown = FALSE;
 	Invalidate();
 
-	if (m_MeasurePoint1 == point) {
-		return;
-	}
-	m_MeasurePoint2 = point;
-
-	nWidth  = m_MeasurePoint2.x - m_MeasurePoint1.x;
-	nHeight = m_MeasurePoint2.y - m_MeasurePoint1.y;
-
-	ScrollPoint = GetScrollPosition();
-	m_nMeasureX = ScrollPoint.x + m_MeasurePoint1.x;
-	m_nMeasureY = ScrollPoint.y + m_MeasurePoint1.y;
-
-	m_nAVRGr = m_bmp.GetAVG_R(m_nMeasureX, m_nMeasureY, nWidth, nHeight);
-	m_nAVRGg = m_bmp.GetAVG_G(m_nMeasureX, m_nMeasureY, nWidth, nHeight);
-	m_nAVRGb = m_bmp.GetAVG_B(m_nMeasureX, m_nMeasureY, nWidth, nHeight);
-
-	if (m_MeasureCnt < 6) {
-		m_RectMeasureRGB[m_MeasureCnt].left = m_nMeasureX;
-		m_RectMeasureRGB[m_MeasureCnt].top = m_nMeasureY;
-		m_RectMeasureRGB[m_MeasureCnt].right = m_nMeasureX + nWidth;
-		m_RectMeasureRGB[m_MeasureCnt].bottom = m_nMeasureY + nHeight;
-
-		m_R[m_MeasureCnt] = m_nAVRGr / 1000;
-		m_G[m_MeasureCnt] = m_nAVRGg / 1000;
-		m_B[m_MeasureCnt] = m_nAVRGb / 1000;
-
-		m_L[m_MeasureCnt] = (float)pow( (m_R[m_MeasureCnt]*m_R[m_MeasureCnt]*0.299) + 
-			                     (m_G[m_MeasureCnt]*m_G[m_MeasureCnt]*0.587) + 
-			                     (m_B[m_MeasureCnt]*m_B[m_MeasureCnt]*0.114), 
-			                     0.5 );
-		m_MeasureCnt++;
-	}
-
-	/*
-	 * Output 1 (measure_result.txt)
-	 */
-	if (0) {
-		if (m_MeasureCnt == 6)
+	if (m_nAction == Action_MeasuringRGB) {
+		MeasureRGB(point);
+	} else if (m_nAction == Action_MeasuringCalibrationData) {
+		if (m_nVertex < 4) {
+			MeasureCalibrationData(point);
+		} else if ( (m_nCalR[m_nCalibrationCnt]==0) && 
+			        (m_nCalG[m_nCalibrationCnt]==0) && 
+			        (m_nCalB[m_nCalibrationCnt]==0) ) 
 		{
-			int i;
-			FILE *fp;
-
-			fp = fopen("measure_result.txt", "r+t");
-			if (!fp)	fp = fopen("measure_result.txt", "wt");
-			fseek(fp, 0, SEEK_END);
-
-			fprintf(fp, "\n");
-			for (i = 0; i < m_strBMPFileName.GetLength(); i++) {
-				fprintf(fp, "%c", m_strBMPFileName[i]);
-			}
-			fprintf(fp, "\nR");
-			for (i = 0; i < 6; i++) {
-				fprintf(fp, "\t%d", m_R[i]);
-			}
-			fprintf(fp, "\nG");
-			for (i = 0; i < 6; i++) {
-				fprintf(fp, "\t%d", m_G[i]);
-			}
-			fprintf(fp, "\nB");
-			for (i = 0; i < 6; i++) {
-				fprintf(fp, "\t%d", m_B[i]);
-			}
-			fclose(fp);
-			fp = NULL;
+			MeasureWBGain(point);
 		}
 	}
-	/*
-	 * Output 2 (for MySQL)
-	 */
-	if (0) {
-		if (m_MeasureCnt == 6) {
-			int i;
-			FILE *fp;
-
-			fp = fopen("measure_result_sql.txt", "r+t");
-			if (!fp)	fp = fopen("measure_result_sql.txt", "wt");
-			fseek(fp, 0, SEEK_END);
-
-			fprintf(fp, "\n");
-			for (i = 0; i < m_strInputFileName.GetLength(); i++) {
-				if (m_strInputFileName[i] == '\n') break;
-				fprintf(fp, "%c", m_strInputFileName[i]);
-			}
-			fprintf(fp, "\t");
-			//fprintf(fp, "\nR");
-			for (i = 0; i < 6; i++) {
-				fprintf(fp, "\t%d", m_R[i]);
-				fprintf(fp, "\t%d", m_G[i]);
-				fprintf(fp, "\t%d", m_B[i]);
-			}
-			fclose(fp);
-			fp = NULL;
-		}
-	}
-	//Invalidate();
 
 	CScrollView::OnLButtonUp(nFlags, point);
 }
@@ -872,30 +932,32 @@ CString CImageAnalyzerView::getValue(CString strFilename, CString strTag)
 void CImageAnalyzerView::OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags)
 {
 	// TODO: ¦b¦¹¥[¤J±zªº°T®§³B²z±`¦¡µ{¦¡½X©M (©Î) ©I¥s¹w³]­È
+
 	if (nChar == 'S') {
 		//
 		// Save last time result
 		//
-		if (m_strResultFile.GetLength()) {
-			SaveResult(m_strResultFile);
-			m_strResultFile.Empty();
+		if (m_nAction == Action_MeasuringRGB) {
+			SaveRGB();
 		}
-		MessageBox(L"The Result has been saved.", L"OK", 0);
-
-	}
-
-	if (nChar == 'R') {
+		else if (m_nAction == Action_MeasuringCalibrationData) {
+			SaveCalibration();
+		}
+	} else if (nChar == 'R') {
 		// Re-measure
-		int i;
-		m_MeasureCnt = 0;
-		for (i = 0; i < 6; i++) {
-			m_R[i] = 0;
-			m_G[i] = 0;
-			m_B[i] = 0;
+		if (m_nAction == Action_MeasuringRGB) {
+			ReMeasureRGB();
+		}
+		else if (m_nAction == Action_MeasuringCalibrationData) {
+			ReMeasureCalibrationData();
 		}
 		Invalidate();
 	}
-
+	else if (nChar == 'N') {
+		if (m_nAction == Action_MeasuringCalibrationData) {
+			MeasureCalibrationData_FileOpen();
+		}
+	}
 	// Move Picture
 	if (nChar == 'M') {
 		CString cmd;
@@ -917,11 +979,123 @@ void CImageAnalyzerView::OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags)
 	CScrollView::OnKeyUp(nChar, nRepCnt, nFlags);
 }
 
+int CImageAnalyzerView::SaveRGB()
+{
+	if (m_strResultFile.GetLength()) {
+		SaveResult(m_strResultFile);
+		m_strResultFile.Empty();
+	}
+	MessageBox(L"The Result has been saved.", L"OK", 0);
+
+	return 0;
+}
+
+int CImageAnalyzerView::SaveCalibration()
+{
+	CStdioFile mmFile;
+	CString    strPWD;
+	CString    strLine;
+	int        i, j, k, l;
+	int        nOpenMode = CStdioFile::modeWrite | CStdioFile::typeText;
+
+	for (i = m_strInputFileName.GetLength(); i >= 0; i--) {
+		if (m_strInputFileName[i] == '\\') break;
+	}
+	l = i + 1;
+	strPWD.GetBufferSetLength(l);
+	for (i = 0; i < l; i++) {
+		strPWD.GetBuffer()[i] = m_strInputFileName[i];
+	}
+
+	if (!mmFile.Open(strPWD + L"\\MakeMatrix.bat", nOpenMode)) {
+		if (!mmFile.Open(strPWD + L"\\MakeMatrix.bat", CStdioFile::modeCreate | nOpenMode)) {
+			return -1;
+		}
+	}
+
+	strLine.Format(L"rem [edit] the definition of illuminants\n");
+	mmFile.WriteString(strLine);
+	for (i = 0; i < m_nCalibrationCnt + 1; i++) {
+		CString strILL;
+		strILL.Empty();
+		strILL.GetBufferSetLength(m_strILL_Name[i].GetLength());
+		for (j = m_strILL_Name[i].GetLength(); j >= 0; j--) {
+			if (m_strILL_Name[i].GetBuffer()[j] == '\\') {
+				j++;
+				break;
+			}
+		}
+		for (k = 0; j < m_strILL_Name[i].GetLength(); j++) {
+			if (m_strILL_Name[i].GetAt(j) == '.') {
+				break;
+			}
+			strILL.GetBuffer()[k] = m_strILL_Name[i].GetAt(j);
+			k++;
+		}
+		strILL.GetBuffer()[k] = '\0';
+		strLine.Format(L"set ILL%03d=%s", i+1, strILL);
+		mmFile.WriteString(strLine);
+	}
+
+	mmFile.WriteString(L"\n");
+	mmFile.WriteString(L"\n");
+	mmFile.WriteString(L"set CHARTIMAGE_FOLDER=forMakeMatrix\\%TARGET%\\%CAMERA%_%SERIAL%\n");
+	mmFile.WriteString(L"rem [edit] raw image file path of Macbeth color chart (input files)\n");
+	for (i = 0; i < m_nCalibrationCnt + 1; i++) {
+		CString strILL_RAW;
+		strILL_RAW.Empty();
+		strILL_RAW.GetBufferSetLength(m_strILL_Name[i].GetLength());
+		for (j = m_strILL_Name[i].GetLength(); j >= 0; j--) {
+			if (m_strILL_Name[i].GetBuffer()[j] == '\\') {
+				j++;
+				break;
+			}
+		}
+		for (k = 0; j < m_strILL_Name[i].GetLength(); j++) {
+			strILL_RAW.GetBuffer()[k] = m_strILL_Name[i].GetAt(j);
+			k++;
+		}
+		strILL_RAW.GetBuffer()[k] = '\0';
+		strLine.Format(L"set CHARTIMAGE_ILL%03d=%%CHARTIMAGE_FOLDER%%\\%s", i+1, strILL_RAW);
+		mmFile.WriteString(strLine);
+	}
+
+	mmFile.WriteString(L"\n");
+	mmFile.WriteString(L"\n");
+	mmFile.WriteString(L"rem[edit] scanning area of Macbeth color chart(-scan option)\n");
+	mmFile.WriteString(L"rem\n");
+	mmFile.WriteString(L"rem v1(x1, y1)   v2(x2, y2)\n");
+	mmFile.WriteString(L"rem     -------------\n");
+	mmFile.WriteString(L"rem     |  Macbeth  |\n");
+	mmFile.WriteString(L"rem     |   area    |\n");
+	mmFile.WriteString(L"rem     -------------\n");
+	mmFile.WriteString(L"rem v4(x4,y4)  v3(x3,y3)\n");
+	mmFile.WriteString(L"rem\n");
+	mmFile.WriteString(L"rem CHARTAREA_SAMPLE = x1, y1, x2, y2, x3, y3, x4, y4\n");
+	for (i = 0; i < m_nCalibrationCnt + 1; i++) {
+		strLine.Format(L"set CHARTAREA_ILL%03d=%d,%d,%d,%d,%d,%d,%d,%d",
+			i+1,
+			m_MCC_Vertices[i][0].x,
+			m_MCC_Vertices[i][0].y,
+			m_MCC_Vertices[i][1].x,
+			m_MCC_Vertices[i][1].y,
+			m_MCC_Vertices[i][2].x,
+			m_MCC_Vertices[i][2].y,
+			m_MCC_Vertices[i][3].x,
+			m_MCC_Vertices[i][3].y
+			);
+	}
+	mmFile.WriteString(strLine);
+
+
+	mmFile.Close();
+
+	return 0;
+}
 
 void CImageAnalyzerView::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 {
 	// TODO: ¦b¦¹¥[¤J±zªº°T®§³B²z±`¦¡µ{¦¡½X©M (©Î) ©I¥s¹w³]­È
-	//Invalidate();
 	CScrollView::OnHScroll(nSBCode, nPos, pScrollBar);
 }
 
@@ -996,14 +1170,15 @@ int CImageAnalyzerView::RecoverRect(CDC *pDC, CPoint p1, CPoint p2)
 void CImageAnalyzerView::OnActionTeacherdata()
 {
 	// TODO: ¦b¦¹¥[¤J±zªº©R¥O³B²z±`¦¡µ{¦¡½X
-	m_nAction = 0;
+	m_nAction = Action_MeasuringTeacherData;
+
 	return;
 }
 
 void CImageAnalyzerView::OnUpdateActionTeacherdata(CCmdUI *pCmdUI)
 {
 	// TODO: ¦b¦¹¥[¤J±zªº©R¥O§ó·s UI ³B²z±`¦¡µ{¦¡½X
-	if (m_nAction == 0) {
+	if (m_nAction == Action_MeasuringTeacherData) {
 		pCmdUI->SetCheck(1);
 	}
 	else {
@@ -1014,17 +1189,255 @@ void CImageAnalyzerView::OnUpdateActionTeacherdata(CCmdUI *pCmdUI)
 void CImageAnalyzerView::OnActionMeasure()
 {
 	// TODO: ¦b¦¹¥[¤J±zªº©R¥O³B²z±`¦¡µ{¦¡½X
-	m_nAction = 1;
+	m_nAction = Action_MeasuringRGB;
 
 }
 
 void CImageAnalyzerView::OnUpdateActionMeasure(CCmdUI *pCmdUI)
 {
 	// TODO: ¦b¦¹¥[¤J±zªº©R¥O§ó·s UI ³B²z±`¦¡µ{¦¡½X
-	if (m_nAction == 1) {
+	if (m_nAction == Action_MeasuringRGB) {
 		pCmdUI->SetCheck(1);
 	}
 	else {
 		pCmdUI->SetCheck(0);
 	}
 }
+
+void CImageAnalyzerView::OnActionCalibration()
+{
+	// TODO: ¦b¦¹¥[¤J±zªº©R¥O³B²z±`¦¡µ{¦¡½X
+	m_nAction = Action_MeasuringCalibrationData;
+}
+
+void CImageAnalyzerView::OnUpdateActionCalibration(CCmdUI *pCmdUI)
+{
+	// TODO: ¦b¦¹¥[¤J±zªº©R¥O§ó·s UI ³B²z±`¦¡µ{¦¡½X
+	pCmdUI->SetCheck(m_nAction == Action_MeasuringCalibrationData);
+}
+
+
+void CImageAnalyzerView::OnZoomIn()
+{
+	// TODO: ¦b¦¹¥[¤J±zªº©R¥O³B²z±`¦¡µ{¦¡½X
+	CSize size;
+
+	m_nZoomPercent += 5;
+	size.cx = m_nBMPWidth * m_nZoomPercent / 100;
+	size.cy = m_nBMPHeight * m_nZoomPercent / 100;
+	SetScrollSizes(MM_TEXT, size);
+
+	Invalidate();
+}
+
+
+void CImageAnalyzerView::OnZoomOut()
+{
+	// TODO: ¦b¦¹¥[¤J±zªº©R¥O³B²z±`¦¡µ{¦¡½X
+	CSize size;
+
+	m_nZoomPercent -= 5;
+	if (m_nZoomPercent < 5) {
+		m_nZoomPercent = 5;
+	}
+	size.cx = m_nBMPWidth * m_nZoomPercent / 100;
+	size.cy = m_nBMPHeight * m_nZoomPercent / 100;
+	SetScrollSizes(MM_TEXT, size);
+
+	Invalidate();
+}
+
+int CImageAnalyzerView::ReMeasureRGB()
+{
+	int i;
+
+	m_MeasureCnt = 0;
+	
+	for (i = 0; i < 6; i++) {
+		m_R[i] = 0;
+		m_G[i] = 0;
+		m_B[i] = 0;
+	}
+	return 0;
+}
+
+int CImageAnalyzerView::ReMeasureCalibrationData()
+{
+	int i;
+
+	m_nVertex = 0;
+
+	/*
+	for (i = 0; i < 6; i++) {
+		m_MCC_Vertices[i] = 0;
+	}
+	*/
+
+	MessageBox(L"Please select MCC vertices.");
+
+	return 0;
+}
+
+int CImageAnalyzerView::MeasureRGB(CPoint point)
+{
+	int    nWidth, nHeight;
+	CPoint ScrollPoint;
+
+	//
+	//  m_MeasurePoint1 <- Passed in on LButtonDown
+	//          +--------+
+	//          |        |
+	//          |        |
+	//          +--------+
+	//                   m_MeasurePoint2 <- Passed in on LButtonUp
+	//
+	if (m_MeasurePoint1 == point) {
+		return 0;
+	}
+	m_MeasurePoint2 = point;
+
+	nWidth  = (m_MeasurePoint2.x - m_MeasurePoint1.x)*100/m_nZoomPercent;
+	nHeight = (m_MeasurePoint2.y - m_MeasurePoint1.y)*100/m_nZoomPercent;
+
+	ScrollPoint = GetScrollPosition();
+	m_nMeasureX = (ScrollPoint.x + m_MeasurePoint1.x)*100/m_nZoomPercent;
+	m_nMeasureY = (ScrollPoint.y + m_MeasurePoint1.y)*100/m_nZoomPercent;
+
+	m_nAVRGr = m_bmp.GetAVG_R(m_nMeasureX, m_nMeasureY, nWidth, nHeight);
+	m_nAVRGg = m_bmp.GetAVG_G(m_nMeasureX, m_nMeasureY, nWidth, nHeight);
+	m_nAVRGb = m_bmp.GetAVG_B(m_nMeasureX, m_nMeasureY, nWidth, nHeight);
+
+	if (m_MeasureCnt < 6) {
+		m_RectMeasureRGB[m_MeasureCnt].left = m_nMeasureX;
+		m_RectMeasureRGB[m_MeasureCnt].top = m_nMeasureY;
+		m_RectMeasureRGB[m_MeasureCnt].right = m_nMeasureX + nWidth;
+		m_RectMeasureRGB[m_MeasureCnt].bottom = m_nMeasureY + nHeight;
+
+		m_R[m_MeasureCnt] = m_nAVRGr / 1000;
+		m_G[m_MeasureCnt] = m_nAVRGg / 1000;
+		m_B[m_MeasureCnt] = m_nAVRGb / 1000;
+
+		m_L[m_MeasureCnt] = (float)pow((m_R[m_MeasureCnt] * m_R[m_MeasureCnt] * 0.299) +
+			(m_G[m_MeasureCnt] * m_G[m_MeasureCnt] * 0.587) +
+			(m_B[m_MeasureCnt] * m_B[m_MeasureCnt] * 0.114),
+			0.5);
+		m_MeasureCnt++;
+	}
+
+	/*
+	* Output 1 (measure_result.txt)
+	*/
+	if (0) {
+		if (m_MeasureCnt == 6)
+		{
+			int i;
+			FILE *fp;
+
+			fp = fopen("measure_result.txt", "r+t");
+			if (!fp)	fp = fopen("measure_result.txt", "wt");
+			fseek(fp, 0, SEEK_END);
+
+			fprintf(fp, "\n");
+			for (i = 0; i < m_strBMPFileName.GetLength(); i++) {
+				fprintf(fp, "%c", m_strBMPFileName[i]);
+			}
+			fprintf(fp, "\nR");
+			for (i = 0; i < 6; i++) {
+				fprintf(fp, "\t%d", m_R[i]);
+			}
+			fprintf(fp, "\nG");
+			for (i = 0; i < 6; i++) {
+				fprintf(fp, "\t%d", m_G[i]);
+			}
+			fprintf(fp, "\nB");
+			for (i = 0; i < 6; i++) {
+				fprintf(fp, "\t%d", m_B[i]);
+			}
+			fclose(fp);
+			fp = NULL;
+		}
+	}
+	/*
+	* Output 2 (for MySQL)
+	*/
+	if (0) {
+		if (m_MeasureCnt == 6) {
+			int i;
+			FILE *fp;
+
+			fp = fopen("measure_result_sql.txt", "r+t");
+			if (!fp)	fp = fopen("measure_result_sql.txt", "wt");
+			fseek(fp, 0, SEEK_END);
+
+			fprintf(fp, "\n");
+			for (i = 0; i < m_strInputFileName.GetLength(); i++) {
+				if (m_strInputFileName[i] == '\n') break;
+				fprintf(fp, "%c", m_strInputFileName[i]);
+			}
+			fprintf(fp, "\t");
+			//fprintf(fp, "\nR");
+			for (i = 0; i < 6; i++) {
+				fprintf(fp, "\t%d", m_R[i]);
+				fprintf(fp, "\t%d", m_G[i]);
+				fprintf(fp, "\t%d", m_B[i]);
+			}
+			fclose(fp);
+			fp = NULL;
+		}
+	}
+	
+	return 0;
+}
+
+int CImageAnalyzerView::MeasureWBGain(CPoint point)
+{
+	int    nWidth, nHeight;
+	CPoint ScrollPoint;
+
+	//
+	//  m_MeasurePoint1 <- Passed in on LButtonDown
+	//          +--------+
+	//          |        |
+	//          |        |
+	//          +--------+
+	//                   m_MeasurePoint2 <- Passed in on LButtonUp
+	//
+	if (m_MeasurePoint1 == point) {
+		return 0;
+	}
+	m_MeasurePoint2 = point;
+
+	ScrollPoint = GetScrollPosition();
+	m_ptCal[m_nCalibrationCnt][0].x = (ScrollPoint.x + m_MeasurePoint1.x)*100/m_nZoomPercent;
+	m_ptCal[m_nCalibrationCnt][0].y = (ScrollPoint.y + m_MeasurePoint1.y)*100/m_nZoomPercent;
+	m_ptCal[m_nCalibrationCnt][1].x = (ScrollPoint.x + m_MeasurePoint2.x)*100/m_nZoomPercent;
+	m_ptCal[m_nCalibrationCnt][1].y = (ScrollPoint.y + m_MeasurePoint2.y)*100/m_nZoomPercent;
+
+	nWidth  = m_ptCal[m_nCalibrationCnt][1].x - m_ptCal[m_nCalibrationCnt][0].x;
+	nHeight = m_ptCal[m_nCalibrationCnt][1].y - m_ptCal[m_nCalibrationCnt][0].y;
+
+	m_nAVRGr = m_bmp.GetAVG_R(m_ptCal[m_nCalibrationCnt][0].x, m_ptCal[m_nCalibrationCnt][0].y, nWidth, nHeight);
+	m_nAVRGg = m_bmp.GetAVG_G(m_ptCal[m_nCalibrationCnt][0].x, m_ptCal[m_nCalibrationCnt][0].y, nWidth, nHeight);
+	m_nAVRGb = m_bmp.GetAVG_B(m_ptCal[m_nCalibrationCnt][0].x, m_ptCal[m_nCalibrationCnt][0].y, nWidth, nHeight);
+
+	m_nCalR[m_nCalibrationCnt] = m_nAVRGr/1000;
+	m_nCalG[m_nCalibrationCnt] = m_nAVRGg/1000;
+	m_nCalB[m_nCalibrationCnt] = m_nAVRGb/1000;
+
+	return 0;
+}
+
+int CImageAnalyzerView::MeasureCalibrationData(CPoint point)
+{
+	CPoint scrollPosition = GetScrollPosition();
+
+	if (m_nVertex < 4) {
+		int i;
+		m_MCC_Vertices[m_nCalibrationCnt][m_nVertex].x = (point.x + scrollPosition.x)*100/m_nZoomPercent;
+		m_MCC_Vertices[m_nCalibrationCnt][m_nVertex].y = (point.y + scrollPosition.y)*100/m_nZoomPercent;
+		m_nVertex++;
+	}
+	
+	return 0;
+}
+
