@@ -64,12 +64,23 @@ BOOL CRawFormatDlg::OnInitDialog()
 
 	// TODO:  在此加入額外的初始化
 	CComboBox *pBox;
+	CEdit     *pEdit;
+	CString    str;
 
 	pBox = (CComboBox *)GetDlgItem(IDC_FORMAT);
-	pBox->SetCurSel(0);
-	m_nFormat = 1;
-	m_nWidth = 0;
-	m_nHeight = 0;
+	m_nFormat = 3;
+	pBox->SetCurSel(m_nFormat);
+
+	m_nWidth = 4640;
+	pEdit = (CEdit *)GetDlgItem(IDC_EDIT_WIDTH);
+	str.Format(L"%d", m_nWidth);
+	pEdit->SetWindowText(str);
+
+	m_nHeight = 3488;
+	pEdit = (CEdit *)GetDlgItem(IDC_EDIT_HEIGHT);
+	str.Format(L"%d", m_nHeight);
+	pEdit->SetWindowText(str);
+
 	return TRUE;  // return TRUE unless you set the focus to a control
 				  // EXCEPTION: OCX 屬性頁應傳回 FALSE
 }
