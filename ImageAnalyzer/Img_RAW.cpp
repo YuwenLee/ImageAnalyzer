@@ -542,7 +542,7 @@ int Img_RAW::RGB_Interpolation(unsigned char *pRAW, int nWidth, int nHeight, uns
 		s_nSwaprb = 1;
 	}
 	else if ((m_nFormat == bayer_gbrg_10bit_packed) || (m_nFormat == bayer_gbrg_10bit_unpacked)) {
-		s_nSwaprb = 2;
+		s_nSwaprb = 0;
 	}
 
 	for (dst_y = 0; dst_y<nHeight; dst_y++) {
