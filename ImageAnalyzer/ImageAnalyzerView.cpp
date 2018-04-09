@@ -316,6 +316,20 @@ void CImageAnalyzerView::OnFileOpen()
 			return;
 		}
 		m_strInputFileName = dlg.GetPathName();
+
+		CString tmp;
+		for (i = m_strInputFileName.GetLength(); i >= 0; i--) {
+			if (m_strInputFileName[i] == '\\') break;
+		}
+		j = i + 1;
+		tmp.GetBufferSetLength(j);
+		for (i = 0; i < j; i++) {
+			tmp.GetBuffer()[i] = m_strInputFileName[i];
+		}
+		tmp.GetBuffer()[i] = '\0';
+		RAW_to_BMP_Dir(tmp);
+
+
 	}
 	else if(m_nAction == Action_MeasuringRGB) {
 		CFileDialog dlg(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, szFileFilters_JPG);
@@ -846,24 +860,35 @@ int CImageAnalyzerView::JPG_to_BMP(CString strFileName, CString strBMPFileName)
 	return 0;
 }
 
-int CImageAnalyzerView::RAW_to_BMP(CString strFileName, CString strBMPFileName)
+int CImageAnalyzerView::RAW_to_BMP(CString strFileName, CString strBMPFileName, int nWidth, int nHeight, int nFormat)
 {
 	CFile         file;
 	Img_RAW       raw;
 	BMP           bmp;
 	CRawFormatDlg dlg;
-	int           format = 0, width = 0, height = 0;
+	int           format = -1, width = 0, height = 0;
 	CString       strOutputFilename;
 	int           i;
 
 	file.Open(strFileName, CFile::modeRead | CFile::typeBinary);
 	raw.SetBufferSize((unsigned int)file.GetLength());
 	file.Read(raw.GetBuffer(), (unsigned int)file.GetLength());
-	if (IDOK == dlg.DoModal()) {
-		format = dlg.GetFormat();
-		dlg.GetWidthHeight(&width, &height);
-	}
 	file.Close();
+
+	if (nFormat == -1) {
+		if (IDOK == dlg.DoModal()) {
+			format = dlg.GetFormat();
+			dlg.GetWidthHeight(&width, &height);
+		}
+		else {
+			return -1;
+		}
+	}
+	else {
+		width = nWidth;
+		height = nHeight;
+		format = nFormat;
+	}
 
 	raw.SetFormat(format, width, height);
 
@@ -872,7 +897,10 @@ int CImageAnalyzerView::RAW_to_BMP(CString strFileName, CString strBMPFileName)
 		bmp.SetLine(raw.GetRGB()+i*width*3, i);
 	}
 
-	file.Open(strBMPFileName, CFile::modeWrite | CFile::typeBinary);
+	if (!file.Open(strBMPFileName, CFile::modeWrite | CFile::typeBinary))
+	{
+		file.Open(strBMPFileName, CFile::modeWrite | CFile::typeBinary | CFile::modeCreate);
+	}
 	file.Write(bmp.GetBuffer(), bmp.GetBufferSize());
 	file.Close();
 
@@ -942,6 +970,9 @@ void CImageAnalyzerView::OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags)
 		}
 		else if (m_nAction == Action_MeasuringCalibrationData) {
 			SaveCalibration();
+		}
+		else if (m_nAction == Action_MeasuringTeacherData) {
+			SaveBMPFile();
 		}
 	} else if (nChar == 'R') {
 		// Re-measure
@@ -1033,7 +1064,7 @@ int CImageAnalyzerView::SaveCalibration()
 			k++;
 		}
 		strILL.GetBuffer()[k] = '\0';
-		strLine.Format(L"set ILL%03d=%s", i+1, strILL);
+		strLine.Format(L"set ILL%03d=%s\n", i+1, strILL);
 		mmFile.WriteString(strLine);
 	}
 
@@ -1056,7 +1087,7 @@ int CImageAnalyzerView::SaveCalibration()
 			k++;
 		}
 		strILL_RAW.GetBuffer()[k] = '\0';
-		strLine.Format(L"set CHARTIMAGE_ILL%03d=%%CHARTIMAGE_FOLDER%%\\%s", i+1, strILL_RAW);
+		strLine.Format(L"set CHARTIMAGE_ILL%03d=%%CHARTIMAGE_FOLDER%%\\%s\n", i+1, strILL_RAW);
 		mmFile.WriteString(strLine);
 	}
 
@@ -1073,7 +1104,7 @@ int CImageAnalyzerView::SaveCalibration()
 	mmFile.WriteString(L"rem\n");
 	mmFile.WriteString(L"rem CHARTAREA_SAMPLE = x1, y1, x2, y2, x3, y3, x4, y4\n");
 	for (i = 0; i < m_nCalibrationCnt + 1; i++) {
-		strLine.Format(L"set CHARTAREA_ILL%03d=%d,%d,%d,%d,%d,%d,%d,%d",
+		strLine.Format(L"set CHARTAREA_ILL%03d=%d,%d,%d,%d,%d,%d,%d,%d\n",
 			i+1,
 			m_MCC_Vertices[i][0].x,
 			m_MCC_Vertices[i][0].y,
@@ -1084,12 +1115,10 @@ int CImageAnalyzerView::SaveCalibration()
 			m_MCC_Vertices[i][3].x,
 			m_MCC_Vertices[i][3].y
 			);
+		mmFile.WriteString(strLine);
 	}
-	mmFile.WriteString(strLine);
-
 
 	mmFile.Close();
-
 	return 0;
 }
 
@@ -1441,3 +1470,68 @@ int CImageAnalyzerView::MeasureCalibrationData(CPoint point)
 	return 0;
 }
 
+int CImageAnalyzerView::SaveBMPFile()
+{
+	CString strCmd;
+	CString strPWD;
+	CString strBMPFileName;
+	int     i, j, l;
+
+	for (i = m_strInputFileName.GetLength(); i >= 0; i--) {
+		if (m_strInputFileName[i] == '\\') break;
+	}
+	l = i + 1;
+	strPWD.GetBufferSetLength(l);
+	for (j = 0; j < i; j++) {
+		strPWD.GetBuffer()[j] = m_strInputFileName[j];
+	}
+	strPWD.GetBuffer()[j] = '\0';
+
+	strBMPFileName = m_strInputFileName;
+	i = strBMPFileName.GetLength();
+	strBMPFileName.GetBuffer()[i - 3] = 'b';
+	strBMPFileName.GetBuffer()[i - 2] = 'm';
+	strBMPFileName.GetBuffer()[i - 1] = 'p';
+
+	strCmd += L"copy \"";
+	strCmd += m_strBMPFileName;
+	strCmd += L"\" \"";
+	strCmd += strBMPFileName;
+	strCmd += L"\"";
+	
+	_wsystem(strCmd);
+
+	return 0;
+}
+
+int CImageAnalyzerView::RAW_to_BMP_Dir(CString strDirName)
+{
+	CFileFind finder;
+	CString   strRAWFilePath;
+	CString   strBMPFilePath;
+	BOOL      bWorking = FALSE;
+	int       i;
+	
+	bWorking = finder.FindFile(strDirName + L"\\*.raw");
+
+	while (bWorking) {
+		bWorking = finder.FindNextFile();
+
+		if (finder.IsDots()) {
+			continue;
+		}
+		if (finder.IsDirectory()) {
+			continue;
+		}
+		strRAWFilePath = finder.GetFilePath();
+		strBMPFilePath = strRAWFilePath;
+		i = strBMPFilePath.GetLength();
+		strBMPFilePath.GetBuffer()[i - 3] = 'b';
+		strBMPFilePath.GetBuffer()[i - 2] = 'm';
+		strBMPFilePath.GetBuffer()[i - 1] = 'p';
+
+		RAW_to_BMP(strRAWFilePath, strBMPFilePath, 4032, 3024, 0);
+
+	}
+	return 0;
+}

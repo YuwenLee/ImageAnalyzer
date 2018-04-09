@@ -109,7 +109,8 @@ public:
 protected:
 	void SaveResult(CString strFileName);
 	int JPG_to_BMP(CString strFileName, CString strBMPFileName);
-	int RAW_to_BMP(CString strFileName, CString strBMPFileName);
+	int RAW_to_BMP_Dir(CString strDirName);
+	int RAW_to_BMP(CString strFileName, CString strBMPFileName, int nWidth = 0, int nHeight = 0, int nFormat = -1);
 	int MeasureRGB(CPoint point);
 	int ReMeasureRGB();
 	int SaveRGB();
@@ -118,6 +119,7 @@ protected:
 	int ReMeasureCalibrationData();
 	int MeasureWBGain(CPoint point);
 	int SaveCalibration();
+	int SaveBMPFile();
 	int LoadBMPFile(CString strFileName);
 	CString getValue(CString strFilename, CString strTag);
 public:
