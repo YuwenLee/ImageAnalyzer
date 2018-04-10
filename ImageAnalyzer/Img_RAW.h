@@ -15,7 +15,7 @@ class Img_RAW
 private:
 	int            m_nDebugRAW;
 	int            m_nDebugBMP;
-	static int     s_nBrightness; /* 24.8 fixed point */;
+	static int     s_nBrightness; /* 24.8 fixed point */
 	static int     s_nSwaprb;
 
 	int qc_imag_bay2rgb10(unsigned char *bay, int bay_line, unsigned char *rgb, int rgb_line, unsigned int columns, unsigned int rows, int bpp);
@@ -23,7 +23,7 @@ private:
 	void qc_imag_writergb10(void *addr, int bpp, unsigned short r, unsigned short g, unsigned short b);
 	void qc_imag_bay2rgb_cottnoip10(unsigned short *bay, int bay_line, unsigned char *rgb, int rgb_line, int columns, int rows, int bpp);
 
-	void WriteToBMP(unsigned char *pRGB, int nWidth, int nHeight, char *fname);
+//	void WriteToBMP(unsigned char *pRGB, int nWidth, int nHeight, char *fname);
 	int WriteToBMP(CString strFileName, int nOverwrite = 0);
 
 protected:
