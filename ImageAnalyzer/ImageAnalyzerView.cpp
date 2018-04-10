@@ -67,7 +67,10 @@ CImageAnalyzerView::CImageAnalyzerView()
 	, m_MeasureCnt(0)
 {
 	// TODO: 在此加入建構程式碼
-	int i, j;
+	CString    str;
+	char       caLine[512];
+	int        i, j;
+
 	for (i = 0; i < 6; i++) {
 		m_B[i] = 0;
 		m_G[i] = 0;
@@ -77,6 +80,16 @@ CImageAnalyzerView::CImageAnalyzerView()
 
 	m_nAction = Action_MeasuringRGB; // Measure RGB
 	m_nZoomPercent = 100; // Picture's original size
+
+	//
+	// RAW Data Format
+	//
+	str = getValue(L"cfg.txt", L"RAW Dlg Format");
+	m_nRAWDlg_format = _ttoi(str);
+	str = getValue(L"cfg.txt", L"RAW Dlg Width");
+	m_nRAWDlg_width = _ttoi(str);
+	str = getValue(L"cfg.txt", L"RAW Dlg Height");
+	m_nRAWDlg_height = _ttoi(str);
 
 	//
 	// Calibration Data
@@ -98,11 +111,14 @@ CImageAnalyzerView::CImageAnalyzerView()
 		m_nCalR[i] = 0;
 		m_nCalG[i] = 0;
 		m_nCalB[i] = 0;
-	}	
+	}
 }
 
 CImageAnalyzerView::~CImageAnalyzerView()
 {
+	setValue(L"cfg.txt", L"RAW Dlg Format", m_nRAWDlg_format);
+	setValue(L"cfg.txt", L"RAW Dlg Width",  m_nRAWDlg_width);
+	setValue(L"cfg.txt", L"RAW Dlg Height", m_nRAWDlg_height);
 }
 
 BOOL CImageAnalyzerView::PreCreateWindow(CREATESTRUCT& cs)
@@ -876,9 +892,13 @@ int CImageAnalyzerView::RAW_to_BMP(CString strFileName, CString strBMPFileName, 
 	file.Close();
 
 	if (nFormat == -1) {
+		dlg.setInitState(m_nRAWDlg_width, m_nRAWDlg_height, m_nRAWDlg_format);
 		if (IDOK == dlg.DoModal()) {
 			format = dlg.GetFormat();
 			dlg.GetWidthHeight(&width, &height);
+			m_nRAWDlg_width = width;
+			m_nRAWDlg_height = height;
+			m_nRAWDlg_format = format;
 		}
 		else {
 			return -1;
@@ -891,6 +911,17 @@ int CImageAnalyzerView::RAW_to_BMP(CString strFileName, CString strBMPFileName, 
 	}
 
 	raw.SetFormat(format, width, height);
+	if ((format == bayer_grbg_10bit_packed) || (format == bayer_gbrg_10bit_packed)) {
+		CString strRawFileName = strFileName;
+		CFile   newRawFile;
+
+		strRawFileName += L"_";
+		if (!newRawFile.Open(strRawFileName, CFile::modeWrite | CFile::typeBinary))
+		{
+			newRawFile.Open(strRawFileName, CFile::modeWrite | CFile::typeBinary | CFile::modeCreate);
+		}
+		newRawFile.Write(raw.GetUnpackedBuffer(), raw.GetUnpackedBufferSize());
+	}
 
 	bmp.SetBufferSize(width, height);
 	for (i = 0; i < height; i++) {
@@ -954,6 +985,48 @@ CString CImageAnalyzerView::getValue(CString strFilename, CString strTag)
      
 	file.Close();
     return strVal;
+}
+
+int CImageAnalyzerView::setValue(CString strFilename, CString strTag, int nValue)
+{
+	CString    buf;
+	CStdioFile file;
+	CString    strNewContent;
+	int        i, j, k;
+
+	if (!file.Open((LPCTSTR)strFilename, CStdioFile::modeReadWrite | CStdioFile::typeText)) {
+		return -1;
+	}
+	file.SeekToBegin();
+	buf.GetBufferSetLength(128);
+	do {
+		if (!file.ReadString(buf.GetBuffer(), 128)) {
+			break;
+		}
+		i = buf.Find(strTag);
+		if (i == -1) {
+			strNewContent += buf;
+			continue;
+		}
+		j = buf.Find(L":", i);
+		if (j == -1) {
+			strNewContent += buf;
+			continue;
+		}
+
+		buf.Empty();
+		buf.Format(L"%s:%d\n", strTag, nValue);
+		strNewContent += buf;
+		buf.Empty();
+		buf.GetBufferSetLength(128);
+		continue;
+	} while (1);
+
+	file.SeekToBegin();
+	file.WriteString(strNewContent);
+	file.Close();
+
+	return 0;
 }
 
 

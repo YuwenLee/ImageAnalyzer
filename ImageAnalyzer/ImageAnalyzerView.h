@@ -87,6 +87,13 @@ private:
 	CRect  m_RectMeasureRGB[6];
 
 	//
+	// RAW Data Format
+	//
+	int    m_nRAWDlg_width;
+	int    m_nRAWDlg_height;
+	int    m_nRAWDlg_format;
+
+	//
 	// Calibration Data
 	//
 	int     m_nCalibrationCnt;     // max value 20
@@ -122,6 +129,7 @@ protected:
 	int SaveBMPFile();
 	int LoadBMPFile(CString strFileName);
 	CString getValue(CString strFilename, CString strTag);
+	int setValue(CString strFileName, CString strTag, int nValue);
 public:
 	afx_msg void OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags);
 	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);

@@ -46,6 +46,7 @@ public:
     unsigned char * GetBuffer();
 	unsigned char * GetUnpackedBuffer();
 	unsigned char * GetRGB();
+	unsigned int GetUnpackedBufferSize();
 };
 
 #endif //_170313_IMG_RAW_

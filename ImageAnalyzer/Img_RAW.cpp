@@ -45,6 +45,7 @@ int Img_RAW::SetBufferSize(unsigned int uSize)
 	if (m_pData == NULL) {
 		return -1;
 	}
+	m_uSize = uSize;
 
 	return 0;
 }
@@ -107,6 +108,8 @@ int Img_RAW::SetFormat(int nFormat, int nWidth, int nHeight)
 			j += 2;
 
 		} while (i < m_nWidth*m_nHeight);
+		free(m_pData);
+		m_pData = NULL;
 	} else if ((nFormat == bayer_grbg_10bit_unpacked)||(nFormat == bayer_gbrg_10bit_unpacked)) {
 		m_pUnpackedData = m_pData;
 		m_pData = NULL;
@@ -722,4 +725,12 @@ inline void Img_RAW::qc_imag_bay2rgb_cottnoip10(
 	qc_imag_writergb10(cur_rgb + bpp, bpp, cur_bay[1], cur_bay[bay_line + 1], cur_bay[bay_line]);
 	qc_imag_writergb10(cur_rgb + rgb_line, bpp, cur_bay[1], cur_bay[bay_line + 1], cur_bay[bay_line]);
 	qc_imag_writergb10(cur_rgb + rgb_line + bpp, bpp, cur_bay[1], cur_bay[bay_line + 1], cur_bay[bay_line]);
+}
+
+unsigned int Img_RAW::GetUnpackedBufferSize()
+{
+	if (m_pUnpackedData) {
+		return m_uSize;
+	}
+	return 0;
 }
