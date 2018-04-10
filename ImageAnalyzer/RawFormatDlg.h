@@ -29,4 +29,5 @@ public:
 	int GetFormat();
 	afx_msg void OnCbnSelchangeFormat();
 	int GetWidthHeight(int * pnWidth, int * pnHeight);
+	void setInitState(int nWidth, int nHeight, int nFormat);
 };

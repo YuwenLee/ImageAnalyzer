@@ -14,7 +14,9 @@ IMPLEMENT_DYNAMIC(CRawFormatDlg, CDialogEx)
 CRawFormatDlg::CRawFormatDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(IDD_RAW_FORMAT, pParent)
 {
-
+	m_nWidth = 4032;
+	m_nHeight = 3024;
+	m_nFormat = 0;
 }
 
 CRawFormatDlg::~CRawFormatDlg()
@@ -68,15 +70,12 @@ BOOL CRawFormatDlg::OnInitDialog()
 	CString    str;
 
 	pBox = (CComboBox *)GetDlgItem(IDC_FORMAT);
-	m_nFormat = 3;
 	pBox->SetCurSel(m_nFormat);
 
-	m_nWidth = 4640;
 	pEdit = (CEdit *)GetDlgItem(IDC_EDIT_WIDTH);
 	str.Format(L"%d", m_nWidth);
 	pEdit->SetWindowText(str);
 
-	m_nHeight = 3488;
 	pEdit = (CEdit *)GetDlgItem(IDC_EDIT_HEIGHT);
 	str.Format(L"%d", m_nHeight);
 	pEdit->SetWindowText(str);
@@ -103,4 +102,13 @@ int CRawFormatDlg::GetWidthHeight(int * pnWidth, int * pnHeight)
 	*pnHeight = m_nHeight;
 
 	return 0;
+}
+
+void CRawFormatDlg::setInitState(int nWidth, int nHeight, int nFormat)
+{
+	m_nWidth = nWidth;
+	m_nHeight = nHeight;
+	m_nFormat = nFormat;
+
+	return;
 }
