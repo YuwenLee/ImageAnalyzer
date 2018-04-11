@@ -342,174 +342,6 @@ int Img_RAW::WriteToBMP(CString strFileName, int nOverwrite)
 	return nError;
 }
 
-//void Img_RAW::WriteToBMP(unsigned char *image, int width, int height, char *filename)
-//{
-//	FILE            *fp;
-//	BITMAPFILEHEADER bfh;
-//	BITMAPINFOHEADER bih;
-//
-//	int              img_line_bytes, total_line_bytes;
-//	int              padding;
-//	unsigned long    headers_size;
-//	int              img_size_with_padding;
-//	unsigned char   *p_img_with_padding = NULL;
-//
-//	headers_size = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
-//
-//	img_line_bytes = width * 3;
-//	padding = (4 - img_line_bytes % 4) % 4;
-//	total_line_bytes = img_line_bytes + padding;
-//	img_size_with_padding = total_line_bytes*height;
-//
-//	p_img_with_padding = (unsigned char *)malloc(img_size_with_padding);
-//	if (p_img_with_padding == NULL) {
-//		//error("[WriteToBMP] Out of memory for (p_img_with_padding)\n");
-//		return;
-//	}
-//	memset(p_img_with_padding, 0, img_size_with_padding);
-//
-//	// Set BMP Info Header
-//	memset(&bih, 0, sizeof(bih));
-//	bih.biSize = sizeof(BITMAPINFOHEADER);
-//	bih.biBitCount = 24;
-//	bih.biClrImportant = 0;
-//	bih.biClrUsed = 0;
-//	bih.biCompression = 0;
-//	bih.biWidth = width;
-//	bih.biHeight = height;
-//	bih.biPlanes = 1;
-//	bih.biSizeImage = img_size_with_padding;
-//	bih.biXPelsPerMeter = 0x0ec4;
-//	bih.biYPelsPerMeter = 0x0ec4;
-//
-//	// Set BMP File Header
-//	memset(&bfh, 0, sizeof(bfh));
-//	bfh.bfType = 0x4d42;
-//	bfh.bfSize = headers_size + img_size_with_padding;
-//	bfh.bfReserved1 = 0;
-//	bfh.bfReserved2 = 0;
-//	bfh.bfOffBits = headers_size;
-//
-//	fp = fopen(filename, "wb");
-//
-//	// Write BMP File Header
-//	{
-//		unsigned char buf[4];
-//
-//		buf[0] = (bfh.bfType & 0x00FF);
-//		buf[1] = (bfh.bfType & 0xFF00) >> 8;
-//		fwrite(buf, 1, sizeof(bfh.bfType), fp);
-//
-//		buf[0] = (bfh.bfSize & 0x000000FF);
-//		buf[1] = (bfh.bfSize & 0x0000FF00) >> 8;
-//		buf[2] = (bfh.bfSize & 0x00FF0000) >> 16;
-//		buf[3] = (bfh.bfSize & 0xFF000000) >> 24;
-//		fwrite(buf, 1, sizeof(bfh.bfSize), fp);
-//
-//		buf[0] = (bfh.bfReserved1 & 0x00FF);
-//		buf[1] = (bfh.bfReserved1 & 0xFF00) >> 8;
-//		fwrite(buf, 1, sizeof(bfh.bfReserved1), fp);
-//
-//		buf[0] = (bfh.bfReserved2 & 0x00FF);
-//		buf[1] = (bfh.bfReserved2 & 0xFF00) >> 8;
-//		fwrite(buf, 1, sizeof(bfh.bfReserved2), fp);
-//
-//		buf[0] = (bfh.bfOffBits & 0x000000FF);
-//		buf[1] = (bfh.bfOffBits & 0x0000FF00) >> 8;
-//		buf[2] = (bfh.bfOffBits & 0x00FF0000) >> 16;
-//		buf[3] = (bfh.bfOffBits & 0xFF000000) >> 24;
-//		fwrite(buf, 1, sizeof(bfh.bfOffBits), fp);
-//
-//	}
-//
-//	// Write BMP Info Header
-//	{
-//		unsigned char buf[4];
-//
-//		buf[0] = (bih.biSize & 0x000000FF);
-//		buf[1] = (bih.biSize & 0x0000FF00) >> 8;
-//		buf[2] = (bih.biSize & 0x00FF0000) >> 16;
-//		buf[3] = (bih.biSize & 0xFF000000) >> 24;
-//		fwrite(buf, 1, sizeof(bih.biSize), fp);
-//
-//		buf[0] = (bih.biWidth & 0x000000FF);
-//		buf[1] = (bih.biWidth & 0x0000FF00) >> 8;
-//		buf[2] = (bih.biWidth & 0x00FF0000) >> 16;
-//		buf[3] = (bih.biWidth & 0xFF000000) >> 24;
-//		fwrite(buf, 1, sizeof(bih.biWidth), fp);
-//
-//		buf[0] = (bih.biHeight & 0x000000FF);
-//		buf[1] = (bih.biHeight & 0x0000FF00) >> 8;
-//		buf[2] = (bih.biHeight & 0x00FF0000) >> 16;
-//		buf[3] = (bih.biHeight & 0xFF000000) >> 24;
-//		fwrite(buf, 1, sizeof(bih.biHeight), fp);
-//
-//		buf[0] = (bih.biPlanes & 0x000000FF);
-//		buf[1] = (bih.biPlanes & 0x0000FF00) >> 8;
-//		fwrite(buf, 1, sizeof(bih.biPlanes), fp);
-//
-//		buf[0] = (bih.biBitCount & 0x000000FF);
-//		buf[1] = (bih.biBitCount & 0x0000FF00) >> 8;
-//		fwrite(buf, 1, sizeof(bih.biBitCount), fp);
-//
-//		buf[0] = (bih.biCompression & 0x000000FF);
-//		buf[1] = (bih.biCompression & 0x0000FF00) >> 8;
-//		fwrite(buf, 1, sizeof(bih.biCompression), fp);
-//
-//		buf[0] = (bih.biSizeImage & 0x000000FF);
-//		buf[1] = (bih.biSizeImage & 0x0000FF00) >> 8;
-//		buf[2] = (bih.biSizeImage & 0x00FF0000) >> 16;
-//		buf[3] = (bih.biSizeImage & 0xFF000000) >> 24;
-//		fwrite(buf, 1, sizeof(bih.biSizeImage), fp);
-//
-//		buf[0] = (bih.biXPelsPerMeter & 0x000000FF);
-//		buf[1] = (bih.biXPelsPerMeter & 0x0000FF00) >> 8;
-//		buf[2] = (bih.biXPelsPerMeter & 0x00FF0000) >> 16;
-//		buf[3] = (bih.biXPelsPerMeter & 0xFF000000) >> 24;
-//		fwrite(buf, 1, sizeof(bih.biXPelsPerMeter), fp);
-//
-//		buf[0] = (bih.biYPelsPerMeter & 0x000000FF);
-//		buf[1] = (bih.biYPelsPerMeter & 0x0000FF00) >> 8;
-//		buf[2] = (bih.biYPelsPerMeter & 0x00FF0000) >> 16;
-//		buf[3] = (bih.biYPelsPerMeter & 0xFF000000) >> 24;
-//		fwrite(buf, 1, sizeof(bih.biYPelsPerMeter), fp);
-//
-//		buf[0] = (bih.biClrUsed & 0x000000FF);
-//		buf[1] = (bih.biClrUsed & 0x0000FF00) >> 8;
-//		buf[2] = (bih.biClrUsed & 0x00FF0000) >> 16;
-//		buf[3] = (bih.biClrUsed & 0xFF000000) >> 24;
-//		fwrite(buf, 1, sizeof(bih.biClrUsed), fp);
-//
-//		buf[0] = (bih.biClrImportant & 0x000000FF);
-//		buf[1] = (bih.biClrImportant & 0x0000FF00) >> 8;
-//		buf[2] = (bih.biClrImportant & 0x00FF0000) >> 16;
-//		buf[3] = (bih.biClrImportant & 0xFF000000) >> 24;
-//		fwrite(buf, 1, sizeof(bih.biClrImportant), fp);
-//
-//	}
-//
-//	// Write Impage
-//	{
-//		int x, y_src, y_dst;
-//
-//		// Write the 1st source line to the last destination line
-//		for (y_src = 0, y_dst = height - 1; y_src<height; y_src++, y_dst--) {
-//			for (x = 0; x<img_line_bytes; x++) {
-//				p_img_with_padding[y_dst*total_line_bytes + x] = image[y_src*img_line_bytes + x];
-//			}
-//		}
-//
-//		fwrite(p_img_with_padding, 1, img_size_with_padding, fp);
-//	}
-//
-//	if (p_img_with_padding) {
-//		free(p_img_with_padding);
-//		p_img_with_padding = NULL;
-//	}
-//	fclose(fp);
-//	return;
-//}
-
 int Img_RAW::RGB_Interpolation(unsigned char *pRAW, int nWidth, int nHeight, unsigned char *pRGB)
 {
 	unsigned int   src_stride = nWidth*2;
@@ -739,5 +571,62 @@ unsigned int Img_RAW::GetUnpackedBufferSize()
 	if (m_pUnpackedData) {
 		return m_uSize;
 	}
+	return 0;
+}
+
+int Img_RAW::SetLineBGR(unsigned char *pBGR, int nLine)
+{
+	unsigned char *pDst;
+	int            nImageLineBytes;
+	int            i;
+
+	if (!m_pRGB) {
+		return -1;
+	}
+
+	nImageLineBytes = m_nWidth * 3;
+	pDst = m_pRGB + nImageLineBytes*nLine;
+	for (i = 0; i < nImageLineBytes; i++) {
+		pDst[i] = pBGR[i];
+	}
+
+	return 0;
+}
+
+int Img_RAW::RGBtoRAW(int nFormat)
+{
+	int i, j;
+	
+	if ( (nFormat == bayer_grbg_10bit_packed) || 
+		 (nFormat == bayer_gbrg_10bit_packed)    ) 
+	{
+		if (!m_pData) {
+			return -1;
+		}
+	}
+
+	if ( (nFormat == bayer_grbg_10bit_unpacked) || 
+		 (nFormat == bayer_gbrg_10bit_unpacked)    )
+	{
+		unsigned short *ptr;
+
+		if (!m_pUnpackedData) {
+			return -1;
+		}
+		ptr = (unsigned short *)m_pUnpackedData;
+
+
+		for (i = 0; i < m_nHeight; i++) {
+			for (j = 0; j < m_nWidth; j++) {
+				ptr[i*m_nWidth + j]         = m_pRGB[i*m_nWidth*3 + j*3 + 1] << 2;   // G
+				ptr[i*m_nWidth + j + 1]     = m_pRGB[i*m_nWidth*3 + j*3 + 2] << 2;   // R
+				ptr[(i+1)*m_nWidth + j]     = m_pRGB[i*m_nWidth*3 + j*3] << 2;       // B
+				ptr[(i+1)*m_nWidth + j + 1] = m_pRGB[i*m_nWidth*3 + j*3 + 1] << 2;   // G
+				j++;
+			}
+			i++;
+		}
+	}
+
 	return 0;
 }

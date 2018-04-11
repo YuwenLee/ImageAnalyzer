@@ -42,6 +42,8 @@ public:
     ~Img_RAW();
     int SetBufferSize(unsigned int uSize);
     int SetFormat(int nFormat, int nWidth, int nHeight);
+	int SetLineBGR(unsigned char *pBGR, int nLine);
+	int RGBtoRAW(int nRawFormat);
     int GetPixel(int x, int y);
     unsigned char * GetBuffer();
 	unsigned char * GetUnpackedBuffer();
