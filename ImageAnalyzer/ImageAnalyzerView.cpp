@@ -46,6 +46,7 @@ BEGIN_MESSAGE_MAP(CImageAnalyzerView, CScrollView)
 	ON_COMMAND(ID_ZOOM_OUT, &CImageAnalyzerView::OnZoomOut)
 	ON_UPDATE_COMMAND_UI(ID_ACTION_CALIBRATION, &CImageAnalyzerView::OnUpdateActionCalibration)
 	ON_COMMAND(ID_ACTION_CALIBRATION, &CImageAnalyzerView::OnActionCalibration)
+	ON_COMMAND(ID_FILE_SAVE_AS, &CImageAnalyzerView::OnFileSaveAs)
 END_MESSAGE_MAP()
 
 // CImageAnalyzerView 建構/解構
@@ -400,42 +401,6 @@ void CImageAnalyzerView::OnFileOpen()
 	{
 		m_strBMPFileName = m_strInputFileName;
 		pic_type = 2;
-
-		CFile   file_bmp;
-		CFile   file_raw;
-		BMP     bmp_src;
-		Img_RAW raw_dst;
-		int     nBMPWidth, nBMPHeight;
-		int     i;
-
-		file_bmp.Open(m_strBMPFileName, CFile::modeRead | CFile::typeBinary);
-		bmp_src.SetBufferSize(file_bmp.GetLength());
-		file_bmp.Read(bmp_src.GetBuffer(), bmp_src.GetBufferSize());
-		bmp_src.ParseData();
-
-		nBMPWidth  = bmp_src.GetWidth();
-		nBMPHeight = bmp_src.GetHeight();
-
-		raw_dst.SetBufferSize(8 * ((nBMPWidth*nBMPHeight + 7) / 8) * 2);
-		raw_dst.SetFormat(bayer_grbg_10bit_unpacked, nBMPWidth, nBMPHeight);
-
-		for (i = 0; i < nBMPHeight; i++)
-		{
-			unsigned char *ptrLine;
-
-			ptrLine = bmp_src.GetLine(i);
-			raw_dst.SetLineBGR(ptrLine, i);			
-			
-		}
-		raw_dst.RGBtoRAW(bayer_grbg_10bit_unpacked);
-
-		if (!file_raw.Open(L"DNG.raw", CFile::modeWrite | CFile::typeBinary))
-		{
-			int r;
-			r = file_raw.Open(L"DNG.raw", CFile::modeCreate | CFile::modeWrite | CFile::typeBinary);
-		}
-		file_raw.Write(raw_dst.GetUnpackedBuffer(), raw_dst.GetUnpackedBufferSize());
-		file_raw.Close();
 	}
 	else if (((m_strInputFileName.GetAt(j - 3) & 0xDF) == 'R') &&
 	         ((m_strInputFileName.GetAt(j - 2) & 0xDF) == 'A') &&
@@ -1586,7 +1551,7 @@ int CImageAnalyzerView::MeasureCalibrationData(CPoint point)
 		m_MCC_Vertices[m_nCalibrationCnt][m_nVertex].y = (point.y + scrollPosition.y)*100/m_nZoomPercent;
 		m_nVertex++;
 	}
-	
+
 	return 0;
 }
 
@@ -1618,7 +1583,7 @@ int CImageAnalyzerView::SaveBMPFile()
 	strCmd += L"\" \"";
 	strCmd += strBMPFileName;
 	strCmd += L"\"";
-	
+
 	_wsystem(strCmd);
 
 	return 0;
@@ -1631,7 +1596,7 @@ int CImageAnalyzerView::RAW_to_BMP_Dir(CString strDirName)
 	CString   strBMPFilePath;
 	BOOL      bWorking = FALSE;
 	int       i;
-	
+
 	bWorking = finder.FindFile(strDirName + L"\\*.raw");
 
 	while (bWorking) {
@@ -1654,4 +1619,83 @@ int CImageAnalyzerView::RAW_to_BMP_Dir(CString strDirName)
 
 	}
 	return 0;
+}
+
+void CImageAnalyzerView::OnFileSaveAs()
+{
+	// TODO: 在此加入您的命令處理常式程式碼
+	TCHAR       szFileFilters_RAW[] = _T("RAW Data (*.raw)|*.raw||");
+	CString     strFileName;
+	int         i, j;
+
+	j = m_strInputFileName.GetLength();
+	if ( ((m_strInputFileName.GetAt(j-3)&0xDF) == 'B') &&
+		 ((m_strInputFileName.GetAt(j-2)&0xDF) == 'M') &&
+		 ((m_strInputFileName.GetAt(j-1)&0xDF) == 'P')    )
+	{
+		// Get file
+		for (i = j; i >= 0; i--)
+		{
+			if (m_strInputFileName[i] == '\\') break;
+		}
+
+		i = i + 1;
+		while (i < j) {
+			TCHAR ctemp = m_strInputFileName[i];
+			if (ctemp == '.') {
+				break;
+			}
+			strFileName += ctemp;
+			i++;
+		}
+		strFileName += '\0';
+
+		{
+			CFileDialog dlg(FALSE, L"raw", strFileName, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, szFileFilters_RAW);;
+
+			if (IDOK == dlg.DoModal()) {
+				strFileName = dlg.GetPathName();
+				SaveBmpAsRaw(m_strInputFileName, strFileName);
+			}
+		}
+	}
+}
+
+void CImageAnalyzerView::SaveBmpAsRaw(CString strBMPFileName, CString strRAWFileName)
+{
+	CFile   file_bmp;
+	CFile   file_raw;
+	BMP     bmp_src;
+	Img_RAW raw_dst;
+	int     nBMPWidth, nBMPHeight;
+	int     i;
+
+	file_bmp.Open(strBMPFileName, CFile::modeRead | CFile::typeBinary);
+	bmp_src.SetBufferSize(file_bmp.GetLength());
+	file_bmp.Read(bmp_src.GetBuffer(), bmp_src.GetBufferSize());
+	bmp_src.ParseData();
+
+	nBMPWidth = bmp_src.GetWidth();
+	nBMPHeight = bmp_src.GetHeight();
+
+	raw_dst.SetBufferSize(8 * ((nBMPWidth*nBMPHeight + 7) / 8) * 2);
+	raw_dst.SetFormat(bayer_grbg_10bit_unpacked, nBMPWidth, nBMPHeight);
+
+	for (i = 0; i < nBMPHeight; i++)
+	{
+		unsigned char *ptrLine;
+
+		ptrLine = bmp_src.GetLine(i);
+		raw_dst.SetLineBGR(ptrLine, i);
+
+	}
+	raw_dst.RGBtoRAW(bayer_grbg_10bit_unpacked);
+
+	if (!file_raw.Open(strRAWFileName, CFile::modeWrite | CFile::typeBinary))
+	{
+		int r;
+		r = file_raw.Open(strRAWFileName, CFile::modeCreate | CFile::modeWrite | CFile::typeBinary);
+	}
+	file_raw.Write(raw_dst.GetUnpackedBuffer(), raw_dst.GetUnpackedBufferSize());
+	file_raw.Close();
 }

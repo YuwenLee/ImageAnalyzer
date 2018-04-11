@@ -146,6 +146,8 @@ public:
 	afx_msg void OnZoomOut();
 	afx_msg void OnUpdateActionCalibration(CCmdUI *pCmdUI);
 	afx_msg void OnActionCalibration();
+	afx_msg void OnFileSaveAs();
+	void SaveBmpAsRaw(CString strBMPFileName, CString strRAWFileName);
 };
 
 #ifndef _DEBUG  // ImageAnalyzerView.cpp ¤¤ªº°»¿ùª©¥»
