@@ -276,6 +276,24 @@ int BMP::SetLine(unsigned char *pRGB, int nLine)
 	return 0;
 }
 
+unsigned char * BMP::GetLine(int nLine)
+{
+	unsigned int   y_dst;
+	unsigned int   uLineSize, uDataSize;
+	unsigned char *pDst = GetRGB();
+
+	if (!pDst) {
+		return NULL;
+	}
+
+	uDataSize = n_width * 3;
+	uLineSize = ((uDataSize + 3) / 4) * 4;
+
+	// The image is saved upside down
+	y_dst = (n_height - 1) - nLine;
+	return pDst + y_dst*uLineSize;
+}
+
 unsigned char * BMP::GetBuffer()
 {
 	return m_pData;
@@ -284,4 +302,12 @@ unsigned char * BMP::GetBuffer()
 unsigned int BMP::GetBufferSize()
 {
 	return m_uSize;
+}
+
+void BMP::ParseData()
+{
+	if (!m_pData) return;
+
+	n_width = GetWidth();
+	n_height = GetHeight();
 }

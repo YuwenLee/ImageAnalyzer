@@ -27,6 +27,8 @@ public:
 	int GetAVG_G(int x, int y, int w, int h);
 	int GetAVG_B(int x, int y, int w, int h);
 	int SetLine(unsigned char *pRGB, int nLine);
+	unsigned char * GetLine(int nLine);
+	void ParseData();
 };
 
 #endif //_170313_CBMP_
