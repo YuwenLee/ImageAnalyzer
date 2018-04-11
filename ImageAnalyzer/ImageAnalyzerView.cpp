@@ -333,6 +333,10 @@ void CImageAnalyzerView::OnFileOpen()
 		}
 		m_strInputFileName = dlg.GetPathName();
 
+		/* 
+		//
+		// The follwoing code transforms all the RAW data in a directory to BMP
+		//
 		CString tmp;
 		for (i = m_strInputFileName.GetLength(); i >= 0; i--) {
 			if (m_strInputFileName[i] == '\\') break;
@@ -344,6 +348,7 @@ void CImageAnalyzerView::OnFileOpen()
 		}
 		tmp.GetBuffer()[i] = '\0';
 		RAW_to_BMP_Dir(tmp);
+		*/
 
 
 	}
@@ -395,6 +400,42 @@ void CImageAnalyzerView::OnFileOpen()
 	{
 		m_strBMPFileName = m_strInputFileName;
 		pic_type = 2;
+
+		CFile   file_bmp;
+		CFile   file_raw;
+		BMP     bmp_src;
+		Img_RAW raw_dst;
+		int     nBMPWidth, nBMPHeight;
+		int     i;
+
+		file_bmp.Open(m_strBMPFileName, CFile::modeRead | CFile::typeBinary);
+		bmp_src.SetBufferSize(file_bmp.GetLength());
+		file_bmp.Read(bmp_src.GetBuffer(), bmp_src.GetBufferSize());
+		bmp_src.ParseData();
+
+		nBMPWidth  = bmp_src.GetWidth();
+		nBMPHeight = bmp_src.GetHeight();
+
+		raw_dst.SetBufferSize(8 * ((nBMPWidth*nBMPHeight + 7) / 8) * 2);
+		raw_dst.SetFormat(bayer_grbg_10bit_unpacked, nBMPWidth, nBMPHeight);
+
+		for (i = 0; i < nBMPHeight; i++)
+		{
+			unsigned char *ptrLine;
+
+			ptrLine = bmp_src.GetLine(i);
+			raw_dst.SetLineBGR(ptrLine, i);			
+			
+		}
+		raw_dst.RGBtoRAW(bayer_grbg_10bit_unpacked);
+
+		if (!file_raw.Open(L"DNG.raw", CFile::modeWrite | CFile::typeBinary))
+		{
+			int r;
+			r = file_raw.Open(L"DNG.raw", CFile::modeCreate | CFile::modeWrite | CFile::typeBinary);
+		}
+		file_raw.Write(raw_dst.GetUnpackedBuffer(), raw_dst.GetUnpackedBufferSize());
+		file_raw.Close();
 	}
 	else if (((m_strInputFileName.GetAt(j - 3) & 0xDF) == 'R') &&
 	         ((m_strInputFileName.GetAt(j - 2) & 0xDF) == 'A') &&
@@ -911,6 +952,11 @@ int CImageAnalyzerView::RAW_to_BMP(CString strFileName, CString strBMPFileName, 
 	}
 
 	raw.SetFormat(format, width, height);
+
+	//
+	// The following code transforms packed raw data to the unpacked.
+	//
+	/*
 	if ((format == bayer_grbg_10bit_packed) || (format == bayer_gbrg_10bit_packed)) {
 		CString strRawFileName = strFileName;
 		CFile   newRawFile;
@@ -922,6 +968,7 @@ int CImageAnalyzerView::RAW_to_BMP(CString strFileName, CString strBMPFileName, 
 		}
 		newRawFile.Write(raw.GetUnpackedBuffer(), raw.GetUnpackedBufferSize());
 	}
+	*/
 
 	bmp.SetBufferSize(width, height);
 	for (i = 0; i < height; i++) {
