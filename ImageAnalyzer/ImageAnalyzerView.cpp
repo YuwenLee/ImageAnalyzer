@@ -1057,7 +1057,13 @@ void CImageAnalyzerView::OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags)
 			SaveCalibration();
 		}
 		else if (m_nAction == Action_MeasuringTeacherData) {
+			CString strJPGFile = m_strInputFileName;
+			int     i = strJPGFile.GetLength();
+			strJPGFile.GetBuffer()[i-3] = 'j';
+			strJPGFile.GetBuffer()[i-2] = 'p';
+			strJPGFile.GetBuffer()[i-1] = 'g';
 			SaveBMPFile();
+			GenerateTeacher(strJPGFile);
 		}
 	} else if (nChar == 'R') {
 		// Re-measure
@@ -1698,4 +1704,147 @@ void CImageAnalyzerView::SaveBmpAsRaw(CString strBMPFileName, CString strRAWFile
 	}
 	file_raw.Write(raw_dst.GetUnpackedBuffer(), raw_dst.GetUnpackedBufferSize());
 	file_raw.Close();
+}
+
+int CImageAnalyzerView::GenerateTeacher(CString strJPGFile)
+{
+	CStdioFile file;
+	CString    strLogFile;
+	CString    strWBGainFile;
+	CString    str;
+	WCHAR      szBuf[1024];
+	float      fAV, fTV, fSV;
+	int        i, j, k;
+
+	// DOS Command
+	// exiftool -ExposureTime -ISO -FNUMBER -CREATEDATE img001.jpg   > exif.txt
+	//                                                  [JPGFileName]
+	str.Format(L".\\exiftool -ExposureTime -ISO -FNUMBER -CREATEDATE ");
+	str += L'\"';
+	str += strJPGFile;
+	str += L'\"';
+	str += L" > exif.txt";
+
+	if ((j = str.GetLength()) > 1024) {
+		return -1;
+	}
+	_wsystem(str);
+
+	//
+	// Get the values
+	//
+
+	// Exposure Time                   : 1/60
+	//                                     ^^
+	str = getValue(L"exif.txt", L"Exposure Time"); 
+	j = str.GetLength();
+	for (i = 0; i < j; i++) {
+		if (str[i] == '/') {
+			break;
+		}
+	}
+	i++;
+	k = 0;
+	while (i < j) {
+		szBuf[k++] = str[i++];
+		if ((str[i] == ' ') || (str[i] == '\n') || (str[i] == '\0')) {
+			break;
+		}
+	}
+	szBuf[k] = '\0';
+	m_nExposure = _ttoi(szBuf);
+
+	// ISO                             : 1600
+	//                                   ^^^^
+	str = getValue(_T("exif.txt"), _T("ISO"));
+	j = str.GetLength();
+	for (i = 0; i < j; i++) {
+		szBuf[i] = str[i];
+		if ((str[i] == ' ') || (str[i] == '\n') || (str[i] == '\0')) {
+			break;
+		}
+	}
+	szBuf[i] = '\0';
+	m_nISO = _ttoi(szBuf);
+
+    //F Number                        : 3.5
+	//                                  ^^^
+	str = getValue(L"exif.txt", L"F Number");
+	j = str.GetLength();
+	for (i = 0; i < j; i++) {
+		szBuf[i] = str[i];
+		if (str[i] == '.') {
+			break;
+		}
+	}
+	szBuf[i++] = '\0';
+	m_nFnum_n = _ttoi(szBuf);
+	for (k = 0; i < j; i++, k++) {
+		szBuf[k] = str[i];
+		if ((str[i] == ' ') || (str[i] == '\n') || (str[i] == '\0')) {
+			break;
+		}
+	}
+	szBuf[k] = '\0';
+	m_nFnum_f = _ttoi(szBuf);
+
+	//
+	// LOG file
+	//
+	str.Empty();
+	strLogFile = strJPGFile;
+	i = strLogFile.GetLength();
+	strLogFile.GetBuffer()[i-3] = 'l';
+	strLogFile.GetBuffer()[i-2] = 'o';
+	strLogFile.GetBuffer()[i-1] = 'g';
+
+	CFile::Remove(strLogFile);
+	file.Open(strLogFile, CStdioFile::modeWrite | CStdioFile::typeText | CStdioFile::modeCreate);
+	file.WriteString(L"[IMAGE_INFO]\n");
+	file.WriteString(L"Endian=0\n");
+	str.Format(L"Width=%d\n", m_nRAWDlg_width);
+	file.WriteString(str);
+	str.Format(L"Height=%d\n", m_nRAWDlg_height);
+	file.WriteString(str);
+	if ( (m_nRAWDlg_format == bayer_grbg_10bit_packed)   || 
+		 (m_nRAWDlg_format == bayer_grbg_10bit_unpacked)   )
+	{
+		file.WriteString(L"TopLeftColor=1\n");
+		file.WriteString(L"PixelMaxValue=1023\n");
+	}
+	else if( (m_nRAWDlg_format == bayer_gbrg_10bit_packed)  ||
+		     (m_nRAWDlg_format == bayer_gbrg_10bit_unpacked)  )
+	{
+		file.WriteString(L"TopLeftColor=2\n");
+		file.WriteString(L"PixelMaxValue=1023\n");
+	}
+	else {
+		file.WriteString(L"TopLeftColor=\n");
+		file.WriteString(L"PixelMaxValue=\n");
+	}
+	file.WriteString(L"Offset=0\n");
+	file.WriteString(L"[SHOT_INFO]\n");
+	
+	str.Format(L"%d.%d\n", m_nFnum_n, m_nFnum_f);
+	fAV = _ttof(str);
+	fAV = 2 * log2(fAV);
+	str.Format(L"Av=%.2f\n", fAV);
+	file.WriteString(str);
+
+	fTV = log2(m_nExposure*1.0);
+	str.Format(L"Tv=%.2f\n", fTV);
+	file.WriteString(str);
+
+	fSV = log2(m_nISO / 3.0);
+	str.Format(L"Sv=%.2f\n", fSV);
+	file.WriteString(str);
+
+	file.WriteString(L"BvFlash=100\n");
+	file.WriteString(L"[TEACHER_INFO]\n");
+	file.WriteString(L"CameraWBR=1.0000\n");
+	file.WriteString(L"CameraWBB=1.0000\n");
+
+	file.Close();
+
+	return 0;
 }

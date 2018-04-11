@@ -148,6 +148,7 @@ public:
 	afx_msg void OnActionCalibration();
 	afx_msg void OnFileSaveAs();
 	void SaveBmpAsRaw(CString strBMPFileName, CString strRAWFileName);
+	int GenerateTeacher(CString strJPGFile);
 };
 
 #ifndef _DEBUG  // ImageAnalyzerView.cpp ¤¤ªº°»¿ùª©¥»
