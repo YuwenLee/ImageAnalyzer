@@ -959,6 +959,10 @@ CString CImageAnalyzerView::getValue(CString strFilename, CString strTag)
 	
 	strVal.Empty();
 	if (!file.Open((LPCTSTR)strFilename, CStdioFile::modeRead | CStdioFile::typeText)) {
+		int nOK;
+		nOK = file.Open((LPCTSTR)strFilename,
+			CStdioFile::modeReadWrite | CStdioFile::typeText | CStdioFile::modeCreate);
+		if (!nOK) MessageBox(strFilename, L"Failed to open");
 		return strVal;
 	}
 
@@ -1004,15 +1008,25 @@ int CImageAnalyzerView::setValue(CString strFilename, CString strTag, int nValue
 	CString    buf;
 	CStdioFile file;
 	CString    strNewContent;
-	int        i, j, k;
+	int        i, j;
 
 	if (!file.Open((LPCTSTR)strFilename, CStdioFile::modeReadWrite | CStdioFile::typeText)) {
-		return -1;
+		if (!file.Open( (LPCTSTR)strFilename,
+						CStdioFile::modeReadWrite | CStdioFile::typeText | CStdioFile::modeCreate))
+		{
+			return -1;
+		}
 	}
+
 	file.SeekToBegin();
 	buf.GetBufferSetLength(128);
 	do {
-		if (!file.ReadString(buf.GetBuffer(), 128)) {
+		if (!file.ReadString(buf.GetBuffer(), 128)) { // End of File
+			buf.Empty();
+			buf.Format(L"%s:%d\n", strTag, nValue);
+			strNewContent += buf;
+			buf.Empty();
+			buf.GetBufferSetLength(128);
 			break;
 		}
 		i = buf.Find(strTag);
@@ -1025,13 +1039,6 @@ int CImageAnalyzerView::setValue(CString strFilename, CString strTag, int nValue
 			strNewContent += buf;
 			continue;
 		}
-
-		buf.Empty();
-		buf.Format(L"%s:%d\n", strTag, nValue);
-		strNewContent += buf;
-		buf.Empty();
-		buf.GetBufferSetLength(128);
-		continue;
 	} while (1);
 
 	file.SeekToBegin();
@@ -1639,7 +1646,7 @@ void CImageAnalyzerView::OnFileSaveAs()
 		 ((m_strInputFileName.GetAt(j-2)&0xDF) == 'M') &&
 		 ((m_strInputFileName.GetAt(j-1)&0xDF) == 'P')    )
 	{
-		// Get file
+		// Get file name (without directory)
 		for (i = j; i >= 0; i--)
 		{
 			if (m_strInputFileName[i] == '\\') break;
@@ -1662,6 +1669,59 @@ void CImageAnalyzerView::OnFileSaveAs()
 			if (IDOK == dlg.DoModal()) {
 				strFileName = dlg.GetPathName();
 				SaveBmpAsRaw(m_strInputFileName, strFileName);
+			}
+		}
+	}
+	else if ( ((m_strInputFileName.GetAt(j - 3) & 0xDF) == 'R') &&
+		      ((m_strInputFileName.GetAt(j - 2) & 0xDF) == 'A') &&
+		      ((m_strInputFileName.GetAt(j - 1) & 0xDF) == 'W') &&
+		      ((m_nRAWDlg_format == bayer_grbg_10bit_packed)|| 
+		       (m_nRAWDlg_format == bayer_gbrg_10bit_packed)  )
+
+			)
+	{
+		//
+		// Get file name (without directory)
+		//
+		for (i = j; i >= 0; i--)
+		{
+			if (m_strInputFileName[i] == '\\') break;
+		}
+
+		i = i + 1;
+		while (i < j) {
+			TCHAR ctemp = m_strInputFileName[i];
+			if (ctemp == '.') {
+				break;
+			}
+			strFileName += ctemp;
+			i++;
+		}
+		strFileName += L"_unpacked";
+		strFileName += '\0';
+
+		{
+			CFileDialog dlg(FALSE, L"raw", strFileName, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, szFileFilters_RAW);
+			CString     strUnpackedRawFileName;
+			CFile       newRawFile;
+			CFile       file;
+			Img_RAW     raw;
+
+			if (IDOK == dlg.DoModal()) {
+				strUnpackedRawFileName = dlg.GetPathName();
+
+				file.Open(m_strInputFileName, CFile::modeRead | CFile::typeBinary);
+				raw.SetBufferSize((unsigned int)file.GetLength());
+				file.Read(raw.GetBuffer(), (unsigned int)file.GetLength());
+				file.Close();
+
+				if (!newRawFile.Open(strUnpackedRawFileName, CFile::modeWrite | CFile::typeBinary))
+				{
+					newRawFile.Open(strUnpackedRawFileName, CFile::modeWrite | CFile::typeBinary | CFile::modeCreate);
+				}
+				raw.SetFormat(m_nRAWDlg_format, m_nRAWDlg_width, m_nRAWDlg_height);
+				newRawFile.Write(raw.GetUnpackedBuffer(), raw.GetUnpackedBufferSize());
+				newRawFile.Close();
 			}
 		}
 	}
@@ -1841,8 +1901,8 @@ int CImageAnalyzerView::GenerateTeacher(CString strJPGFile)
 
 	file.WriteString(L"BvFlash=100\n");
 	file.WriteString(L"[TEACHER_INFO]\n");
-	file.WriteString(L"CameraWBR=1.0000\n");
-	file.WriteString(L"CameraWBB=1.0000\n");
+	file.WriteString(L"CameraWBR=1.00\n");
+	file.WriteString(L"CameraWBB=1.00\n");
 
 	file.Close();
 
