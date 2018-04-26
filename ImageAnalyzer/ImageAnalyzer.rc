@@ -152,13 +152,13 @@ END
 //
 
 IDD_ABOUTBOX DIALOGEX 0, 0, 170, 62
-STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "關於 ImageAnalyzer"
-FONT 9, "????", 0, 0, 0x1
+FONT 10, "Verdana", 400, 0, 0x0
 BEGIN
-    ICON            IDR_MAINFRAME,IDC_STATIC,14,14,21,20
-    LTEXT           "ImageAnalyzer, 1.0 版",IDC_STATIC,42,14,114,8,SS_NOPREFIX
-    LTEXT           "Copyright (C) 2017",IDC_STATIC,42,26,114,8
+    ICON            IDR_MAINFRAME,IDC_STATIC,14,14,20,20,WS_GROUP
+    LTEXT           "ImageAnalyzer, version 1.2",IDC_STATIC,42,14,114,8,SS_NOPREFIX
+    LTEXT           "Copyright (C) wiscon 2018",IDC_STATIC,42,26,114,8
     DEFPUSHBUTTON   "確定",IDOK,113,41,50,14,WS_GROUP
 END
 
@@ -169,8 +169,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,1,0,3
- PRODUCTVERSION 1,1,0,3
+ FILEVERSION 1,2,0,1
+ PRODUCTVERSION 1,2,0,1
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -187,12 +187,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "wiscon"
             VALUE "FileDescription", "ImageAnalyzer"
-            VALUE "FileVersion", "1.1.0.3"
+            VALUE "FileVersion", "1.2.0.1"
             VALUE "InternalName", "ImageAnalyzer.exe"
             VALUE "LegalCopyright", "(c) wiscon.  著作權所有，並保留一切權利。"
             VALUE "OriginalFilename", "ImageAnalyzer.exe"
             VALUE "ProductName", "ImageAnalyzer"
-            VALUE "ProductVersion", "1.1.0.3"
+            VALUE "ProductVersion", "1.2.0.1"
         END
     END
     BLOCK "VarFileInfo"
@@ -219,6 +219,17 @@ BEGIN
     END
 END
 #endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// AFX_DIALOG_LAYOUT
+//
+
+IDD_ABOUTBOX AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
 
 
 /////////////////////////////////////////////////////////////////////////////

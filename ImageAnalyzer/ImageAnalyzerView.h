@@ -103,9 +103,6 @@ private:
 	int     m_nILL_CTT[20];        // Color Temperatures
 	float   m_fduv[20];            // delta UVs
 	CPoint  m_ptCal[20][2];
-	int     m_nCalR[20];
-	int     m_nCalG[20];
-	int     m_nCalB[20];
 	
 public:
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);

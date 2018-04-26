@@ -109,9 +109,6 @@ CImageAnalyzerView::CImageAnalyzerView()
 		m_ptCal[i][0].y = 0;
 		m_ptCal[i][1].x = 0;
 		m_ptCal[i][1].y = 0;
-		m_nCalR[i] = 0;
-		m_nCalG[i] = 0;
-		m_nCalB[i] = 0;
 	}
 }
 
@@ -197,14 +194,7 @@ void CImageAnalyzerView::OnDraw(CDC* pDC)
 			pDC->MoveTo(m_MCC_Vertices[m_nCalibrationCnt][3].x*m_nZoomPercent / 100, m_MCC_Vertices[m_nCalibrationCnt][3].y*m_nZoomPercent / 100);
 			pDC->LineTo(m_MCC_Vertices[m_nCalibrationCnt][0].x*m_nZoomPercent / 100, m_MCC_Vertices[m_nCalibrationCnt][0].y*m_nZoomPercent / 100);
 		}
-		if (m_nCalR[m_nCalibrationCnt] != 0) {
-			CPoint p1, p2;
-			p1.x = m_ptCal[m_nCalibrationCnt][0].x*m_nZoomPercent/100;
-			p1.y = m_ptCal[m_nCalibrationCnt][0].y*m_nZoomPercent/100;
-			p2.x = m_ptCal[m_nCalibrationCnt][1].x*m_nZoomPercent/100;
-			p2.y = m_ptCal[m_nCalibrationCnt][1].y*m_nZoomPercent/100;
-			DrawRect(pDC, p1, p2);
-		}
+
 		pDC->SelectObject(pPen);
 	}
 
@@ -217,6 +207,24 @@ void CImageAnalyzerView::OnDraw(CDC* pDC)
 	
 	//str.Format(L"%d, %d : %d, %d, %d", m_nMeasureX, m_nMeasureY, m_nAVRGr, m_nAVRGg, m_nAVRGb);
 	//dc.TextOutW(10, 10, str);
+
+	//
+	// Measuring Teacher Data
+	//
+	if (m_nAction == Action_MeasuringTeacherData) {
+		CPoint p1, p2;
+
+		pPen = pDC->SelectObject(&pen);
+
+		p1.x = m_RectMeasureRGB[0].left*m_nZoomPercent / 100;
+		p1.y = m_RectMeasureRGB[0].top*m_nZoomPercent / 100;
+		p2.x = m_RectMeasureRGB[0].right*m_nZoomPercent / 100;
+		p2.y = m_RectMeasureRGB[0].bottom*m_nZoomPercent / 100;
+		DrawRect(pDC, p1, p2);
+
+		pDC->SelectObject(pPen);
+	}
+
 }
 
 int CImageAnalyzerView::LoadBMPFile(CString strFileName)
@@ -561,12 +569,11 @@ void CImageAnalyzerView::OnLButtonUp(UINT nFlags, CPoint point)
 	} else if (m_nAction == Action_MeasuringCalibrationData) {
 		if (m_nVertex < 4) {
 			MeasureCalibrationData(point);
-		} else if ( (m_nCalR[m_nCalibrationCnt]==0) && 
-			        (m_nCalG[m_nCalibrationCnt]==0) && 
-			        (m_nCalB[m_nCalibrationCnt]==0) ) 
-		{
-			MeasureWBGain(point);
 		}
+	}
+	else if (m_nAction == Action_MeasuringTeacherData) {
+		ReMeasureRGB();
+		MeasureRGB(point);
 	}
 
 	CScrollView::OnLButtonUp(nFlags, point);
@@ -600,15 +607,7 @@ void CImageAnalyzerView::SaveResult(CString strFilename)
 		str += m_strInputFileName;
 		str += '\"';
 		str += _T(" > exif.txt");
-
-		if ((j = str.GetLength()) > 1024) {
-			break;
-		}
-		for (i = 0; i < j; i++) {
-			szbuf[i] = (char)(str[i]);
-		}
-		szbuf[i] = 0;
-		system(szbuf);
+		_wsystem(str);
 
 		str = getValue(_T("exif.txt"), _T("Exposure Time"));
 		j = str.GetLength();
@@ -676,11 +675,11 @@ void CImageAnalyzerView::SaveResult(CString strFilename)
 	//
 	{
 		CString str;
-		str.Format(_T("[Filename]\n%s\n[Date]\n%d-%d-%d-%d-%d-%d\n"), m_strInputFileName, m_nYear, m_nMonth, m_nDay, m_nHour, m_nMin, m_nSec);
+		str.Format(L"[Filename]\n%s\n[Date]\n%d-%d-%d-%d-%d-%d\n", m_strInputFileName, m_nYear, m_nMonth, m_nDay, m_nHour, m_nMin, m_nSec);
 		file.WriteString(str);
-		str.Format(_T("[Brightness]\nExpo\tISO\tF#\n"));
+		str.Format(L"[Brightness]\nExpo\tISO\tF#\n");
 		file.WriteString(str);
-		str.Format(_T("1/%d \t%d \t%d.%d\n"), m_nExposure, m_nISO, m_nFnum_n, m_nFnum_f);
+		str.Format(L"1/%d \t%d \t%d.%d\n", m_nExposure, m_nISO, m_nFnum_n, m_nFnum_f);
 		file.WriteString(str);
 	}
 
@@ -856,8 +855,6 @@ int CImageAnalyzerView::JPG_to_BMP(CString strFileName, CString strBMPFileName)
 {
 	//CString strBMPFileName(_T(""));
 	CString strCmd;
-	char    szCmd[1024];
-	int     i;
 
 	// ffmpeg -i IMG20170712151728.jpg -frames 1 -pix_fmt bgr24 -y IMG20170712151728.bmp
 	strCmd.Format(_T(".\\ffmpeg -i "));
@@ -869,15 +866,7 @@ int CImageAnalyzerView::JPG_to_BMP(CString strFileName, CString strBMPFileName)
 	strCmd += strBMPFileName;
 	strCmd += '\"';
 
-	if (strCmd.GetLength() > 1023) {
-		return -1;
-	}
-
-	for (i = 0; i < strCmd.GetLength(); i++) {
-		szCmd[i] = (char)(strCmd[i]);
-	}
-	szCmd[i] = 0;
-	system(szCmd);
+	_wsystem(strCmd);
 
 	return 0;
 }
@@ -1405,6 +1394,38 @@ int CImageAnalyzerView::ReMeasureCalibrationData()
 	return 0;
 }
 
+int CImageAnalyzerView::MeasureWBGain(CPoint point)
+{
+	int    nWidth, nHeight;
+	CPoint ScrollPoint;
+
+	//
+	//  m_MeasurePoint1 <- Passed in on LButtonDown
+	//          +--------+
+	//          |        |
+	//          |        |
+	//          +--------+
+	//                   m_MeasurePoint2 <- Passed in on LButtonUp
+	//
+	if (m_MeasurePoint1 == point) {
+		return 0;
+	}
+	m_MeasurePoint2 = point;
+
+	nWidth = (m_MeasurePoint2.x - m_MeasurePoint1.x) * 100 / m_nZoomPercent;
+	nHeight = (m_MeasurePoint2.y - m_MeasurePoint1.y) * 100 / m_nZoomPercent;
+
+	ScrollPoint = GetScrollPosition();
+	m_nMeasureX = (ScrollPoint.x + m_MeasurePoint1.x) * 100 / m_nZoomPercent;
+	m_nMeasureY = (ScrollPoint.y + m_MeasurePoint1.y) * 100 / m_nZoomPercent;
+
+	m_nAVRGr = m_bmp.GetAVG_R(m_nMeasureX, m_nMeasureY, nWidth, nHeight);
+	m_nAVRGg = m_bmp.GetAVG_G(m_nMeasureX, m_nMeasureY, nWidth, nHeight);
+	m_nAVRGb = m_bmp.GetAVG_B(m_nMeasureX, m_nMeasureY, nWidth, nHeight);
+
+	return 0;
+}
+
 int CImageAnalyzerView::MeasureRGB(CPoint point)
 {
 	int    nWidth, nHeight;
@@ -1423,12 +1444,12 @@ int CImageAnalyzerView::MeasureRGB(CPoint point)
 	}
 	m_MeasurePoint2 = point;
 
-	nWidth  = (m_MeasurePoint2.x - m_MeasurePoint1.x)*100/m_nZoomPercent;
-	nHeight = (m_MeasurePoint2.y - m_MeasurePoint1.y)*100/m_nZoomPercent;
+	nWidth = (m_MeasurePoint2.x - m_MeasurePoint1.x) * 100 / m_nZoomPercent;
+	nHeight = (m_MeasurePoint2.y - m_MeasurePoint1.y) * 100 / m_nZoomPercent;
 
 	ScrollPoint = GetScrollPosition();
-	m_nMeasureX = (ScrollPoint.x + m_MeasurePoint1.x)*100/m_nZoomPercent;
-	m_nMeasureY = (ScrollPoint.y + m_MeasurePoint1.y)*100/m_nZoomPercent;
+	m_nMeasureX = (ScrollPoint.x + m_MeasurePoint1.x) * 100 / m_nZoomPercent;
+	m_nMeasureY = (ScrollPoint.y + m_MeasurePoint1.y) * 100 / m_nZoomPercent;
 
 	m_nAVRGr = m_bmp.GetAVG_R(m_nMeasureX, m_nMeasureY, nWidth, nHeight);
 	m_nAVRGg = m_bmp.GetAVG_G(m_nMeasureX, m_nMeasureY, nWidth, nHeight);
@@ -1513,44 +1534,6 @@ int CImageAnalyzerView::MeasureRGB(CPoint point)
 		}
 	}
 	
-	return 0;
-}
-
-int CImageAnalyzerView::MeasureWBGain(CPoint point)
-{
-	int    nWidth, nHeight;
-	CPoint ScrollPoint;
-
-	//
-	//  m_MeasurePoint1 <- Passed in on LButtonDown
-	//          +--------+
-	//          |        |
-	//          |        |
-	//          +--------+
-	//                   m_MeasurePoint2 <- Passed in on LButtonUp
-	//
-	if (m_MeasurePoint1 == point) {
-		return 0;
-	}
-	m_MeasurePoint2 = point;
-
-	ScrollPoint = GetScrollPosition();
-	m_ptCal[m_nCalibrationCnt][0].x = (ScrollPoint.x + m_MeasurePoint1.x)*100/m_nZoomPercent;
-	m_ptCal[m_nCalibrationCnt][0].y = (ScrollPoint.y + m_MeasurePoint1.y)*100/m_nZoomPercent;
-	m_ptCal[m_nCalibrationCnt][1].x = (ScrollPoint.x + m_MeasurePoint2.x)*100/m_nZoomPercent;
-	m_ptCal[m_nCalibrationCnt][1].y = (ScrollPoint.y + m_MeasurePoint2.y)*100/m_nZoomPercent;
-
-	nWidth  = m_ptCal[m_nCalibrationCnt][1].x - m_ptCal[m_nCalibrationCnt][0].x;
-	nHeight = m_ptCal[m_nCalibrationCnt][1].y - m_ptCal[m_nCalibrationCnt][0].y;
-
-	m_nAVRGr = m_bmp.GetAVG_R(m_ptCal[m_nCalibrationCnt][0].x, m_ptCal[m_nCalibrationCnt][0].y, nWidth, nHeight);
-	m_nAVRGg = m_bmp.GetAVG_G(m_ptCal[m_nCalibrationCnt][0].x, m_ptCal[m_nCalibrationCnt][0].y, nWidth, nHeight);
-	m_nAVRGb = m_bmp.GetAVG_B(m_ptCal[m_nCalibrationCnt][0].x, m_ptCal[m_nCalibrationCnt][0].y, nWidth, nHeight);
-
-	m_nCalR[m_nCalibrationCnt] = m_nAVRGr/1000;
-	m_nCalG[m_nCalibrationCnt] = m_nAVRGg/1000;
-	m_nCalB[m_nCalibrationCnt] = m_nAVRGb/1000;
-
 	return 0;
 }
 
@@ -1858,7 +1841,10 @@ int CImageAnalyzerView::GenerateTeacher(CString strJPGFile)
 	strLogFile.GetBuffer()[i-2] = 'o';
 	strLogFile.GetBuffer()[i-1] = 'g';
 
-	CFile::Remove(strLogFile);
+	if (file.Open(strLogFile, CStdioFile::modeReadWrite | CStdioFile::typeText)) {
+		file.Close();
+		file.Remove(strLogFile);
+	}
 	file.Open(strLogFile, CStdioFile::modeWrite | CStdioFile::typeText | CStdioFile::modeCreate);
 	file.WriteString(L"[IMAGE_INFO]\n");
 	file.WriteString(L"Endian=0\n");
@@ -1903,6 +1889,32 @@ int CImageAnalyzerView::GenerateTeacher(CString strJPGFile)
 	file.WriteString(L"[TEACHER_INFO]\n");
 	file.WriteString(L"CameraWBR=1.00\n");
 	file.WriteString(L"CameraWBB=1.00\n");
+
+	file.Close();
+
+	//
+	// WBGain file
+	//
+	str.Empty();
+	strWBGainFile = strJPGFile;
+	i = strWBGainFile.GetLength();
+	strWBGainFile.GetBuffer()[i - 3] = 'w';
+	strWBGainFile.GetBuffer()[i - 2] = 'b';
+	strWBGainFile.GetBuffer()[i - 1] = 'g';
+	strWBGainFile += L"ain";
+
+	if (file.Open(strWBGainFile, CStdioFile::modeReadWrite | CStdioFile::typeText)) {
+		file.Close();
+		file.Remove(strWBGainFile);
+	}
+	file.Open(strWBGainFile, CStdioFile::modeWrite | CStdioFile::typeText | CStdioFile::modeCreate);
+	file.WriteString(L"[WhiteBalanceGain]\n");
+	str.Format(L"WBR=%.4f\n", (m_nAVRGb*1.0)/m_nAVRGr);
+	file.WriteString(str);
+	str.Format(L"WBB=%.4f\n", (m_nAVRGg*1.0)/m_nAVRGb);
+	file.WriteString(str);
+	file.WriteString(L"[AWBOptimize]\n");
+	file.WriteString(L"Mark=B\n");
 
 	file.Close();
 
