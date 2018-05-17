@@ -71,6 +71,8 @@ private:
 	int    m_nISO;
 	int    m_nFnum_n;   // F# = n.f
 	int    m_nFnum_f;   // F# = n.f
+	int    m_nBV_n;     // BV = n.f
+	int    m_nBV_f;     // BV = n.f
 	int    m_nYear;
 	int    m_nMonth;
 	int    m_nDay;

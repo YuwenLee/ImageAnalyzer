@@ -178,12 +178,17 @@ int BMP::GetAVG_R(int x, int y, int w, int h)
 	ptr += (GetHeight() - y)*nLineBytes;
 
 	for (j = 0; j < h ; j++) {
+		unsigned int temp;
 		ptr -= nLineBytes;
 		for (i = x; i < (x + w); i++) {
+			temp = avrg;
 			avrg += *(ptr + i*3 + 2);
+			if (temp > avrg) {
+				return -1; // Overflow
+			}
 		}
 	}
-	avrg = avrg*1000 / (w*h);
+	avrg = avrg / (w*h);
 
 	return avrg;
 }
@@ -214,12 +219,18 @@ int BMP::GetAVG_G(int x, int y, int w, int h)
 	if (h == 0) h = 2;
 
 	for (j = 0; j < h; j++) {
+		unsigned int temp;
 		ptr -= nLineBytes;
 		for (i = x; i < (x + w); i++) {
+			temp = avrg;
 			avrg += *(ptr + i*3 + 1);
+			if (temp > avrg) {
+				return -1; // Overflow
+			}
 		}
 	}
-	avrg = avrg * 1000 / (w*h);
+
+	avrg = avrg / (w*h);
 
 	return avrg;
 }
@@ -247,12 +258,17 @@ int BMP::GetAVG_B(int x, int y, int w, int h)
 	ptr += (GetHeight() - y)*nLineBytes;
 
 	for (j = 0; j < h; j++) {
+		unsigned int temp;
 		ptr -= nLineBytes;
 		for (i = x; i < (x + w); i++) {
+			temp = avrg;
 			avrg += *(ptr + i*3);
+			if (temp > avrg) {
+				return -1; // Overflow
+			}
 		}
 	}
-	avrg = avrg * 1000 / (w*h);
+	avrg = avrg / (w*h);
 
 	return avrg;
 }

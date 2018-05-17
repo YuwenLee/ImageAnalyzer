@@ -342,22 +342,22 @@ void CImageAnalyzerView::OnFileOpen()
 		}
 		m_strInputFileName = dlg.GetPathName();
 
-		/* 
-		//
-		// The follwoing code transforms all the RAW data in a directory to BMP
-		//
-		CString tmp;
-		for (i = m_strInputFileName.GetLength(); i >= 0; i--) {
-			if (m_strInputFileName[i] == '\\') break;
+		if (0) {
+			//
+			// The follwoing code transforms all the RAW data in a directory to BMP
+			//
+			CString tmp;
+			for (i = m_strInputFileName.GetLength(); i >= 0; i--) {
+				if (m_strInputFileName[i] == '\\') break;
+			}
+			j = i + 1;
+			tmp.GetBufferSetLength(j);
+			for (i = 0; i < j; i++) {
+				tmp.GetBuffer()[i] = m_strInputFileName[i];
+			}
+			tmp.GetBuffer()[i] = '\0';
+			RAW_to_BMP_Dir(tmp);
 		}
-		j = i + 1;
-		tmp.GetBufferSetLength(j);
-		for (i = 0; i < j; i++) {
-			tmp.GetBuffer()[i] = m_strInputFileName[i];
-		}
-		tmp.GetBuffer()[i] = '\0';
-		RAW_to_BMP_Dir(tmp);
-		*/
 
 
 	}
@@ -602,7 +602,7 @@ void CImageAnalyzerView::SaveResult(CString strFilename)
 		int        i, j, k;
 
 		// exiftool -ExposureTime -ISO -FNUMBER -CREATEDATE img001.jpg > exif.txt
-		str.Format(_T(".\\exiftool -ExposureTime -ISO -FNUMBER -CREATEDATE "));
+		str.Format(_T(".\\exiftool -ExposureTime -ISO -FNUMBER -CREATEDATE -BrightnessValue "));
 		str += '\"';
 		str += m_strInputFileName;
 		str += '\"';
@@ -1452,8 +1452,20 @@ int CImageAnalyzerView::MeasureRGB(CPoint point)
 	m_nMeasureY = (ScrollPoint.y + m_MeasurePoint1.y) * 100 / m_nZoomPercent;
 
 	m_nAVRGr = m_bmp.GetAVG_R(m_nMeasureX, m_nMeasureY, nWidth, nHeight);
+	if (m_nAVRGr < 0) {
+		MessageBox(L"Overflow took place. Please select a smaller area", L"R");
+		return -1;
+	}
 	m_nAVRGg = m_bmp.GetAVG_G(m_nMeasureX, m_nMeasureY, nWidth, nHeight);
+	if (m_nAVRGg < 0) {
+		MessageBox(L"Overflow took place. Please select a smaller area", L"G");
+		return -1;
+	}
 	m_nAVRGb = m_bmp.GetAVG_B(m_nMeasureX, m_nMeasureY, nWidth, nHeight);
+	if (m_nAVRGb < 0) {
+		MessageBox(L"Overflow took place. Please select a smaller area", L"B");
+		return -1;
+	}
 
 	if (m_MeasureCnt < 6) {
 		m_RectMeasureRGB[m_MeasureCnt].left = m_nMeasureX;
@@ -1461,9 +1473,9 @@ int CImageAnalyzerView::MeasureRGB(CPoint point)
 		m_RectMeasureRGB[m_MeasureCnt].right = m_nMeasureX + nWidth;
 		m_RectMeasureRGB[m_MeasureCnt].bottom = m_nMeasureY + nHeight;
 
-		m_R[m_MeasureCnt] = m_nAVRGr / 1000;
-		m_G[m_MeasureCnt] = m_nAVRGg / 1000;
-		m_B[m_MeasureCnt] = m_nAVRGb / 1000;
+		m_R[m_MeasureCnt] = m_nAVRGr;
+		m_G[m_MeasureCnt] = m_nAVRGg;
+		m_B[m_MeasureCnt] = m_nAVRGb;
 
 		m_L[m_MeasureCnt] = (float)pow((m_R[m_MeasureCnt] * m_R[m_MeasureCnt] * 0.299) +
 			(m_G[m_MeasureCnt] * m_G[m_MeasureCnt] * 0.587) +
@@ -1756,13 +1768,13 @@ int CImageAnalyzerView::GenerateTeacher(CString strJPGFile)
 	CString    strWBGainFile;
 	CString    str;
 	WCHAR      szBuf[1024];
-	float      fAV, fTV, fSV;
+	float      fAV, fTV, fSV, fBV;
 	int        i, j, k;
 
 	// DOS Command
 	// exiftool -ExposureTime -ISO -FNUMBER -CREATEDATE img001.jpg   > exif.txt
 	//                                                  [JPGFileName]
-	str.Format(L".\\exiftool -ExposureTime -ISO -FNUMBER -CREATEDATE ");
+	str.Format(L".\\exiftool -ExposureTime -ISO -FNUMBER -CREATEDATE -BrightnessValue ");
 	str += L'\"';
 	str += strJPGFile;
 	str += L'\"';
@@ -1831,6 +1843,27 @@ int CImageAnalyzerView::GenerateTeacher(CString strJPGFile)
 	szBuf[k] = '\0';
 	m_nFnum_f = _ttoi(szBuf);
 
+	// Brightness Value                : 2.32
+	//                                   ^^^^
+	str = getValue(L"exif.txt", L"Brightness Value");
+	j = str.GetLength();
+	for (i = 0; i < j; i++) {
+		szBuf[i] = str[i];
+		if (str[i] == '.') {
+			break;
+		}
+	}
+	szBuf[i++] = '\0';
+	m_nBV_n = _ttoi(szBuf);
+	for (k = 0; i < j; i++, k++) {
+		szBuf[k] = str[i];
+		if ((str[i] == ' ') || (str[i] == '\n') || (str[i] == '\0')) {
+			break;
+		}
+	}
+	szBuf[k] = '\0';
+	m_nBV_f = _ttoi(szBuf);
+
 	//
 	// LOG file
 	//
@@ -1885,6 +1918,9 @@ int CImageAnalyzerView::GenerateTeacher(CString strJPGFile)
 	str.Format(L"Sv=%.2f\n", fSV);
 	file.WriteString(str);
 
+	str.Format(L"Bv=%d.%d\n", m_nBV_n, m_nBV_f);
+	file.WriteString(str);
+
 	file.WriteString(L"BvFlash=100\n");
 	file.WriteString(L"[TEACHER_INFO]\n");
 	file.WriteString(L"CameraWBR=1.00\n");
@@ -1909,7 +1945,7 @@ int CImageAnalyzerView::GenerateTeacher(CString strJPGFile)
 	}
 	file.Open(strWBGainFile, CStdioFile::modeWrite | CStdioFile::typeText | CStdioFile::modeCreate);
 	file.WriteString(L"[WhiteBalanceGain]\n");
-	str.Format(L"WBR=%.4f\n", (m_nAVRGb*1.0)/m_nAVRGr);
+	str.Format(L"WBR=%.4f\n", (m_nAVRGg*1.0)/m_nAVRGr);
 	file.WriteString(str);
 	str.Format(L"WBB=%.4f\n", (m_nAVRGg*1.0)/m_nAVRGb);
 	file.WriteString(str);
