@@ -84,7 +84,12 @@ BEGIN
     BEGIN
         MENUITEM "Calibration Data (&C)\tAlt+C", ID_ACTION_CALIBRATION
         MENUITEM "Teacher Data (&T)\t Alt+T",   ID_ACTION_TEACHERDATA
+        MENUITEM "Transform RAW (&R)\tAlt+R",   ID_ACTION_TRANSFORM_RAW
         MENUITEM "Measure RGB (&M)\tAlt+M",     ID_ACTION_MEASURE, CHECKED
+        MENUITEM SEPARATOR
+        MENUITEM "Unpack RAW (&U)\tAlt+U",      ID_ACTION_UNPACK
+        MENUITEM "RAW to BMP (B)\tAlt+B",       ID_ACTION_BMP
+        MENUITEM "Generate Eval Data (&E)\tAlt+E", ID_ACTION_EVAL
     END
     POPUP "檔案(&F)"
     BEGIN
@@ -169,8 +174,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,2,0,3
- PRODUCTVERSION 1,2,0,3
+ FILEVERSION 1,2,0,4
+ PRODUCTVERSION 1,2,0,4
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -187,12 +192,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "wiscon"
             VALUE "FileDescription", "ImageAnalyzer"
-            VALUE "FileVersion", "1.2.0.3"
+            VALUE "FileVersion", "1.2.0.4"
             VALUE "InternalName", "ImageAnalyzer.exe"
             VALUE "LegalCopyright", "(c) wiscon.  著作權所有，並保留一切權利。"
             VALUE "OriginalFilename", "ImageAnalyzer.exe"
             VALUE "ProductName", "ImageAnalyzer"
-            VALUE "ProductVersion", "1.2.0.3"
+            VALUE "ProductVersion", "1.2.0.4"
         END
     END
     BLOCK "VarFileInfo"

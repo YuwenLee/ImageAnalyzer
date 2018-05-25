@@ -148,6 +148,16 @@ public:
 	afx_msg void OnFileSaveAs();
 	void SaveBmpAsRaw(CString strBMPFileName, CString strRAWFileName);
 	int GenerateTeacher(CString strJPGFile);
+	afx_msg void OnUpdateActionTransformRaw(CCmdUI *pCmdUI);
+	afx_msg void OnActionTransformRaw();
+protected:
+	int PackedRAW_to_UnpackedRAW_DIR(CString strDirName);
+public:
+	afx_msg void OnActionBmp();
+	afx_msg void OnActionUnpack();
+	afx_msg void OnActionEval();
+protected:
+	int GenerateTeacher_Dir(CString strDirName);
 };
 
 #ifndef _DEBUG  // ImageAnalyzerView.cpp ¤¤ªº°»¿ùª©¥»

@@ -47,6 +47,11 @@ BEGIN_MESSAGE_MAP(CImageAnalyzerView, CScrollView)
 	ON_UPDATE_COMMAND_UI(ID_ACTION_CALIBRATION, &CImageAnalyzerView::OnUpdateActionCalibration)
 	ON_COMMAND(ID_ACTION_CALIBRATION, &CImageAnalyzerView::OnActionCalibration)
 	ON_COMMAND(ID_FILE_SAVE_AS, &CImageAnalyzerView::OnFileSaveAs)
+	ON_UPDATE_COMMAND_UI(ID_ACTION_TRANSFORM_RAW, &CImageAnalyzerView::OnUpdateActionTransformRaw)
+	ON_COMMAND(ID_ACTION_TRANSFORM_RAW, &CImageAnalyzerView::OnActionTransformRaw)
+	ON_COMMAND(ID_ACTION_BMP, &CImageAnalyzerView::OnActionBmp)
+	ON_COMMAND(ID_ACTION_UNPACK, &CImageAnalyzerView::OnActionUnpack)
+	ON_COMMAND(ID_ACTION_EVAL, &CImageAnalyzerView::OnActionEval)
 END_MESSAGE_MAP()
 
 // CImageAnalyzerView 建構/解構
@@ -62,9 +67,9 @@ CImageAnalyzerView::CImageAnalyzerView()
 	, m_nViewHeight(0)
 	, m_nMeasureX(0)
 	, m_nMeasureY(0)
-	, m_nAVRGr(0)
-	, m_nAVRGb(0)
-	, m_nAVRGg(0)
+	, m_nAVRGr(1)
+	, m_nAVRGb(1)
+	, m_nAVRGg(1)
 	, m_MeasureCnt(0)
 {
 	// TODO: 在此加入建構程式碼
@@ -341,25 +346,6 @@ void CImageAnalyzerView::OnFileOpen()
 			return;
 		}
 		m_strInputFileName = dlg.GetPathName();
-
-		if (0) {
-			//
-			// The follwoing code transforms all the RAW data in a directory to BMP
-			//
-			CString tmp;
-			for (i = m_strInputFileName.GetLength(); i >= 0; i--) {
-				if (m_strInputFileName[i] == '\\') break;
-			}
-			j = i + 1;
-			tmp.GetBufferSetLength(j);
-			for (i = 0; i < j; i++) {
-				tmp.GetBuffer()[i] = m_strInputFileName[i];
-			}
-			tmp.GetBuffer()[i] = '\0';
-			RAW_to_BMP_Dir(tmp);
-		}
-
-
 	}
 	else if(m_nAction == Action_MeasuringRGB) {
 		CFileDialog dlg(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, szFileFilters_JPG);
@@ -418,6 +404,8 @@ void CImageAnalyzerView::OnFileOpen()
 		pic_type = 3;
 	}
 
+	LoadBMPFile(m_strBMPFileName);
+
 	//
 	// Extract EXIF
 	//
@@ -427,8 +415,6 @@ void CImageAnalyzerView::OnFileOpen()
 		case 1:
 		case 2:
 		case 3:
-			LoadBMPFile(m_strBMPFileName);
-
 			//
 			// Prepare for the new result file name
 			//
@@ -907,23 +893,6 @@ int CImageAnalyzerView::RAW_to_BMP(CString strFileName, CString strBMPFileName, 
 
 	raw.SetFormat(format, width, height);
 
-	//
-	// The following code transforms packed raw data to the unpacked.
-	//
-	/*
-	if ((format == bayer_grbg_10bit_packed) || (format == bayer_gbrg_10bit_packed)) {
-		CString strRawFileName = strFileName;
-		CFile   newRawFile;
-
-		strRawFileName += L"_";
-		if (!newRawFile.Open(strRawFileName, CFile::modeWrite | CFile::typeBinary))
-		{
-			newRawFile.Open(strRawFileName, CFile::modeWrite | CFile::typeBinary | CFile::modeCreate);
-		}
-		newRawFile.Write(raw.GetUnpackedBuffer(), raw.GetUnpackedBufferSize());
-	}
-	*/
-
 	bmp.SetBufferSize(width, height);
 	for (i = 0; i < height; i++) {
 		bmp.SetLine(raw.GetRGB()+i*width*3, i);
@@ -1333,6 +1302,129 @@ void CImageAnalyzerView::OnUpdateActionCalibration(CCmdUI *pCmdUI)
 }
 
 
+void CImageAnalyzerView::OnUpdateActionTransformRaw(CCmdUI *pCmdUI)
+{
+	// TODO: 在此加入您的命令更新 UI 處理常式程式碼
+}
+
+void CImageAnalyzerView::OnActionTransformRaw()
+{
+	// TODO: 在此加入您的命令處理常式程式碼
+}
+
+void CImageAnalyzerView::OnActionBmp()
+{
+	// TODO: 在此加入您的命令處理常式程式碼
+	BROWSEINFO   bi;
+	TCHAR        szDisplayName[MAX_PATH];
+
+	ZeroMemory(&bi, sizeof(bi));
+	szDisplayName[0] = ' ';
+
+	bi.hwndOwner = NULL;
+	bi.pidlRoot = NULL;
+	bi.pszDisplayName = szDisplayName;
+	bi.lpszTitle = _T("Please select a folder :");
+	bi.ulFlags = BIF_RETURNONLYFSDIRS;
+	bi.lParam = NULL;
+	bi.iImage = 0;
+
+	LPITEMIDLIST   pidl = SHBrowseForFolder(&bi);
+	TCHAR          szPathName[MAX_PATH];
+	if (NULL != pidl)
+	{
+		BOOL bRet = SHGetPathFromIDList(pidl, szPathName);
+		if (FALSE == bRet)
+			return;
+		AfxMessageBox(szPathName);
+	}
+	
+	{
+		CRawFormatDlg dlg;
+		dlg.setInitState(m_nRAWDlg_width, m_nRAWDlg_height, m_nRAWDlg_format);
+		if (IDOK == dlg.DoModal()) {
+			m_nRAWDlg_format = dlg.GetFormat();
+			dlg.GetWidthHeight(&m_nRAWDlg_width, &m_nRAWDlg_height);
+		}
+	}
+
+	RAW_to_BMP_Dir(szPathName);
+
+	MessageBox(L"BMP files generated.");
+}
+
+void CImageAnalyzerView::OnActionEval()
+{
+	// TODO: 在此加入您的命令處理常式程式碼
+	BROWSEINFO   bi;
+	TCHAR        szDisplayName[MAX_PATH];
+
+	ZeroMemory(&bi, sizeof(bi));
+	szDisplayName[0] = ' ';
+
+	bi.hwndOwner = NULL;
+	bi.pidlRoot = NULL;
+	bi.pszDisplayName = szDisplayName;
+	bi.lpszTitle = _T("Please select a folder :");
+	bi.ulFlags = BIF_RETURNONLYFSDIRS;
+	bi.lParam = NULL;
+	bi.iImage = 0;
+
+	LPITEMIDLIST   pidl = SHBrowseForFolder(&bi);
+	TCHAR          szPathName[MAX_PATH];
+	if (NULL != pidl)
+	{
+		BOOL bRet = SHGetPathFromIDList(pidl, szPathName);
+		if (FALSE == bRet)
+			return;
+		AfxMessageBox(szPathName);
+	}
+
+	GenerateTeacher_Dir(szPathName);
+	MessageBox(L".WBGain and .Lof files generated.");
+}
+
+void CImageAnalyzerView::OnActionUnpack()
+{
+	// TODO: 在此加入您的命令處理常式程式碼
+	BROWSEINFO   bi;
+	TCHAR        szDisplayName[MAX_PATH];
+
+	ZeroMemory(&bi, sizeof(bi));
+	szDisplayName[0] = ' ';
+
+	bi.hwndOwner = NULL;
+	bi.pidlRoot = NULL;
+	bi.pszDisplayName = szDisplayName;
+	bi.lpszTitle = _T("Please select a folder :");
+	bi.ulFlags = BIF_RETURNONLYFSDIRS;
+	bi.lParam = NULL;
+	bi.iImage = 0;
+
+	LPITEMIDLIST   pidl = SHBrowseForFolder(&bi);
+	TCHAR          szPathName[MAX_PATH];
+	if (NULL != pidl)
+	{
+		BOOL bRet = SHGetPathFromIDList(pidl, szPathName);
+		if (FALSE == bRet)
+			return;
+		AfxMessageBox(szPathName);
+	}
+
+	{
+		CRawFormatDlg dlg;
+		dlg.setInitState(m_nRAWDlg_width, m_nRAWDlg_height, m_nRAWDlg_format);
+		if (IDOK == dlg.DoModal()) {
+			m_nRAWDlg_format = dlg.GetFormat();
+			dlg.GetWidthHeight(&m_nRAWDlg_width, &m_nRAWDlg_height);
+		}
+	}
+
+	PackedRAW_to_UnpackedRAW_DIR(szPathName);
+
+	MessageBox(L"Unpacking Finished.");
+}
+
 void CImageAnalyzerView::OnZoomIn()
 {
 	// TODO: 在此加入您的命令處理常式程式碼
@@ -1623,8 +1715,32 @@ int CImageAnalyzerView::RAW_to_BMP_Dir(CString strDirName)
 		strBMPFilePath.GetBuffer()[i - 2] = 'm';
 		strBMPFilePath.GetBuffer()[i - 1] = 'p';
 
-		RAW_to_BMP(strRAWFilePath, strBMPFilePath, 4032, 3024, 0);
+		RAW_to_BMP(strRAWFilePath, strBMPFilePath, m_nRAWDlg_width, m_nRAWDlg_height, m_nRAWDlg_format);
 
+	}
+	return 0;
+}
+
+int CImageAnalyzerView::GenerateTeacher_Dir(CString strDirName)
+{
+	CFileFind finder;
+	CString   strJPGFilePath;
+	BOOL      bWorking = FALSE;
+	int       i;
+
+	bWorking = finder.FindFile(strDirName + L"\\*.jpg");
+
+	while (bWorking) {
+		bWorking = finder.FindNextFile();
+
+		if (finder.IsDots()) {
+			continue;
+		}
+		if (finder.IsDirectory()) {
+			continue;
+		}
+		strJPGFilePath = finder.GetFilePath();
+		GenerateTeacher(strJPGFilePath);
 	}
 	return 0;
 }
@@ -1953,6 +2069,102 @@ int CImageAnalyzerView::GenerateTeacher(CString strJPGFile)
 	file.WriteString(L"Mark=B\n");
 
 	file.Close();
+
+	return 0;
+}
+
+
+int CImageAnalyzerView::PackedRAW_to_UnpackedRAW_DIR(CString strDirName)
+{
+	CFileFind finder;
+	CString   strInFilePath;
+	CString   strJPGFilePath;
+	CString   strOutDir;
+	CString   strOutFilePath;
+	BOOL      bWorking = FALSE;
+	int       i;
+
+	bWorking = finder.FindFile(strDirName + L"\\*.raw");
+	strOutDir = strDirName + L"\\Unpacked_RAW";
+	CreateDirectory(strOutDir, NULL);
+
+	while (bWorking) {
+		bWorking = finder.FindNextFile();
+
+		if (finder.IsDots()) {
+			continue;
+		}
+		if (finder.IsDirectory()) {
+			continue;
+		}
+		strInFilePath = finder.GetFilePath();
+		strOutFilePath = strOutDir + L"\\" + finder.GetFileName();
+
+		{
+			CFile   file;
+			CFile   newRawFile;
+			Img_RAW raw;
+
+			file.Open(strInFilePath, CFile::modeRead | CFile::typeBinary);
+			raw.SetBufferSize((unsigned int)file.GetLength());
+			file.Read(raw.GetBuffer(), (unsigned int)file.GetLength());
+			file.Close();
+
+			if (!newRawFile.Open(strOutFilePath, CFile::modeWrite | CFile::typeBinary))
+			{
+				newRawFile.Open(strOutFilePath, CFile::modeWrite | CFile::typeBinary | CFile::modeCreate);
+			}
+			raw.SetFormat(m_nRAWDlg_format, m_nRAWDlg_width, m_nRAWDlg_height);
+			newRawFile.Write(raw.GetUnpackedBuffer(), raw.GetUnpackedBufferSize());
+			newRawFile.Close();
+		}
+
+		if(0){
+			int i;
+			strJPGFilePath = strInFilePath;
+			i = strJPGFilePath.GetLength();
+			strJPGFilePath.GetBuffer()[i - 3] = 'J';
+			strJPGFilePath.GetBuffer()[i - 2] = 'P';
+			strJPGFilePath.GetBuffer()[i - 1] = 'G';
+
+			GenerateTeacher(strJPGFilePath);
+		}
+
+		if (0)
+		{
+			CStdioFile stdioFile;
+			CString    strWBGainFilePath = strOutFilePath;
+			CString    strLOGFilePath = strOutFilePath;
+			CString    str;
+			int        i;
+
+			i = strOutFilePath.GetLength();
+			strWBGainFilePath.GetBuffer()[i - 3] = 'W';
+			strWBGainFilePath.GetBuffer()[i - 2] = 'B';
+			strWBGainFilePath.GetBuffer()[i - 1] = 'G';
+			strWBGainFilePath += L"ain";
+
+			if (stdioFile.Open(strWBGainFilePath, CStdioFile::modeReadWrite | CStdioFile::typeText)) {
+				stdioFile.Close();
+				stdioFile.Remove(strWBGainFilePath);
+			}
+			stdioFile.Open(strWBGainFilePath, CStdioFile::modeWrite | CStdioFile::typeText | CStdioFile::modeCreate);
+			stdioFile.WriteString(L"[WhiteBalanceGain]\n");
+			str.Format(L"WBR=1.0\n");
+			stdioFile.WriteString(str);
+			str.Format(L"WBB=1.0\n");
+			stdioFile.WriteString(str);
+			stdioFile.WriteString(L"[AWBOptimize]\n");
+			stdioFile.WriteString(L"Mark=B\n");
+
+			stdioFile.Close();
+
+			strLOGFilePath.GetBuffer()[i - 3] = 'L';
+			strLOGFilePath.GetBuffer()[i - 2] = 'O';
+			strLOGFilePath.GetBuffer()[i - 1] = 'G';
+
+		}
+	}
 
 	return 0;
 }

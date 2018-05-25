@@ -92,8 +92,5 @@
     <Image Include="res\ImageAnalyzer.ico">
       <Filter>資源檔</Filter>
     </Image>
-    <Image Include="E:\r2.bmp">
-      <Filter>資源檔</Filter>
-    </Image>
   </ItemGroup>
 </Project>

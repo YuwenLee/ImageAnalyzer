@@ -215,7 +215,6 @@
     <None Include="res\ImageAnalyzer.rc2" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="E:\r2.bmp" />
     <Image Include="res\ImageAnalyzer.ico" />
     <Image Include="res\ImageAnalyzerDoc.ico" />
   </ItemGroup>
