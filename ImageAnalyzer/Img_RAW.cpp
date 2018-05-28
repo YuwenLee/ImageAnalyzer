@@ -27,8 +27,12 @@ Img_RAW::~Img_RAW()
 {
 	if (m_pData) free(m_pData);
 	m_pData = NULL;
+
 	if (m_pUnpackedData) free(m_pUnpackedData);
 	m_pUnpackedData = NULL;
+
+	if (m_pRGB) free(m_pRGB);
+	m_pRGB = NULL;
 
 	m_uSize = 0;
 }
@@ -63,6 +67,11 @@ int Img_RAW::SetFormat(int nFormat, int nWidth, int nHeight)
 
 	if (m_pUnpackedData) free(m_pUnpackedData);
 	m_pUnpackedData = NULL;
+
+	if (m_pRGB) {
+		free(m_pRGB);
+	}
+	m_pRGB = NULL;
 
 	m_uSize = 8 * ((m_nWidth*m_nHeight+7)/8) * 2; // Align to 8 bytes
 	m_pUnpackedData = (unsigned char *)malloc( m_uSize*sizeof(unsigned int) );
