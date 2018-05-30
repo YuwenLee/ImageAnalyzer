@@ -72,12 +72,13 @@ int Img_RAW::SetFormat(int nFormat, int nWidth, int nHeight)
 		free(m_pRGB);
 	}
 	m_pRGB = NULL;
-
-	m_uSize = 8 * ((m_nWidth*m_nHeight+7)/8) * 2; // Align to 8 bytes
-	m_pUnpackedData = (unsigned char *)malloc( m_uSize*sizeof(unsigned int) );
-	memset(m_pUnpackedData, 0, m_uSize);
 	
 	if ((nFormat == bayer_grbg_10bit_packed) || (nFormat == bayer_gbrg_10bit_packed)) {
+
+		m_uSize = 8 * ((m_nWidth*m_nHeight + 7) / 8) * 2; // Align to 8 bytes
+		m_pUnpackedData = (unsigned char *)malloc(m_uSize * sizeof(unsigned int));
+		memset(m_pUnpackedData, 0, m_uSize);
+
 		i = 0;
 		j = 0;
 		k = 0;
@@ -639,3 +640,5 @@ int Img_RAW::RGBtoRAW(int nFormat)
 
 	return 0;
 }
+
+
