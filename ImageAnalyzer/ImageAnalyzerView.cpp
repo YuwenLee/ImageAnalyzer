@@ -1971,6 +1971,8 @@ int CImageAnalyzerView::GenerateTeacher(CString strJPGFile)
 	}
 	szBuf[i++] = '\0';
 	m_nBV_n = _ttoi(szBuf);
+	if (szBuf[0] == '-') m_nBV_s = -1;
+	else                 m_nBV_s =  1;
 	for (k = 0; i < j; i++, k++) {
 		szBuf[k] = str[i];
 		if ((str[i] == ' ') || (str[i] == '\n') || (str[i] == '\0')) {
@@ -2034,7 +2036,12 @@ int CImageAnalyzerView::GenerateTeacher(CString strJPGFile)
 	str.Format(L"Sv=%.2f\n", fSV);
 	file.WriteString(str);
 
-	str.Format(L"Bv=%d.%d\n", m_nBV_n, m_nBV_f);
+	if ((m_nBV_s == -1) && (m_nBV_n == 0)) {
+		str.Format(L"Bv=-%d.%d\n", m_nBV_n, m_nBV_f);
+	}
+	else {
+		str.Format(L"Bv=%d.%d\n", m_nBV_n, m_nBV_f);
+	}
 	file.WriteString(str);
 
 	file.WriteString(L"BvFlash=100\n");
