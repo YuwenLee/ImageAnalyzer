@@ -1962,25 +1962,8 @@ int CImageAnalyzerView::GenerateTeacher(CString strJPGFile)
 	// Brightness Value                : 2.32
 	//                                   ^^^^
 	str = getValue(L"exif.txt", L"Brightness Value");
+	m_fBV =_ttof(str);
 	j = str.GetLength();
-	for (i = 0; i < j; i++) {
-		szBuf[i] = str[i];
-		if (str[i] == '.') {
-			break;
-		}
-	}
-	szBuf[i++] = '\0';
-	m_nBV_n = _ttoi(szBuf);
-	if (szBuf[0] == '-') m_nBV_s = -1;
-	else                 m_nBV_s =  1;
-	for (k = 0; i < j; i++, k++) {
-		szBuf[k] = str[i];
-		if ((str[i] == ' ') || (str[i] == '\n') || (str[i] == '\0')) {
-			break;
-		}
-	}
-	szBuf[k] = '\0';
-	m_nBV_f = _ttoi(szBuf);
 
 	//
 	// LOG file
@@ -2036,12 +2019,7 @@ int CImageAnalyzerView::GenerateTeacher(CString strJPGFile)
 	str.Format(L"Sv=%.2f\n", fSV);
 	file.WriteString(str);
 
-	if ((m_nBV_s == -1) && (m_nBV_n == 0)) {
-		str.Format(L"Bv=-%d.%d\n", m_nBV_n, m_nBV_f);
-	}
-	else {
-		str.Format(L"Bv=%d.%d\n", m_nBV_n, m_nBV_f);
-	}
+	str.Format(L"Bv=%f\n", m_fBV);
 	file.WriteString(str);
 
 	file.WriteString(L"BvFlash=100\n");
