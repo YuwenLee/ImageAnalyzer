@@ -162,7 +162,7 @@ CAPTION "關於 ImageAnalyzer"
 FONT 10, "Verdana", 400, 0, 0x0
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,14,14,20,20,WS_GROUP
-    LTEXT           "ImageAnalyzer, version 1.2",IDC_STATIC,42,14,114,8,SS_NOPREFIX
+    LTEXT           "ImageAnalyzer, version 1.3",IDC_STATIC,42,14,114,8,SS_NOPREFIX
     LTEXT           "Copyright (C) wiscon 2018",IDC_STATIC,42,26,114,8
     DEFPUSHBUTTON   "確定",IDOK,113,41,50,14,WS_GROUP
 END
@@ -174,8 +174,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,2,0,9
- PRODUCTVERSION 1,2,0,9
+ FILEVERSION 1,3,0,0
+ PRODUCTVERSION 1,3,0,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -192,12 +192,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "wiscon"
             VALUE "FileDescription", "ImageAnalyzer"
-            VALUE "FileVersion", "1.2.0.9"
+            VALUE "FileVersion", "1.3.0.0"
             VALUE "InternalName", "ImageAnalyzer.exe"
             VALUE "LegalCopyright", "(c) wiscon.  著作權所有，並保留一切權利。"
             VALUE "OriginalFilename", "ImageAnalyzer.exe"
             VALUE "ProductName", "ImageAnalyzer"
-            VALUE "ProductVersion", "1.2.0.9"
+            VALUE "ProductVersion", "1.3.0.0"
         END
     END
     BLOCK "VarFileInfo"
