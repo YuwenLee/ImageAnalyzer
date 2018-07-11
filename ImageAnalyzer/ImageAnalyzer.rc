@@ -89,7 +89,7 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "Unpack RAW (&U)\tAlt+U",      ID_ACTION_UNPACK
         MENUITEM "RAW to BMP (B)\tAlt+B",       ID_ACTION_BMP
-        MENUITEM "Generate Eval Data (&E)\tAlt+E", ID_ACTION_EVAL
+        MENUITEM "Generate LOG file for SPD5 (&L)\tAlt+L", ID_ACTION_LOG
     END
     POPUP "檔案(&F)"
     BEGIN
@@ -162,7 +162,7 @@ CAPTION "關於 ImageAnalyzer"
 FONT 10, "Verdana", 400, 0, 0x0
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,14,14,20,20,WS_GROUP
-    LTEXT           "ImageAnalyzer, version 1.2",IDC_STATIC,42,14,114,8,SS_NOPREFIX
+    LTEXT           "ImageAnalyzer, version 1.3",IDC_STATIC,42,14,114,8,SS_NOPREFIX
     LTEXT           "Copyright (C) wiscon 2018",IDC_STATIC,42,26,114,8
     DEFPUSHBUTTON   "確定",IDOK,113,41,50,14,WS_GROUP
 END
@@ -174,8 +174,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,2,0,9
- PRODUCTVERSION 1,2,0,9
+ FILEVERSION 1,3,0,1
+ PRODUCTVERSION 1,3,0,1
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -192,12 +192,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "wiscon"
             VALUE "FileDescription", "ImageAnalyzer"
-            VALUE "FileVersion", "1.2.0.9"
+            VALUE "FileVersion", "1.3.0.1"
             VALUE "InternalName", "ImageAnalyzer.exe"
             VALUE "LegalCopyright", "(c) wiscon.  著作權所有，並保留一切權利。"
             VALUE "OriginalFilename", "ImageAnalyzer.exe"
             VALUE "ProductName", "ImageAnalyzer"
-            VALUE "ProductVersion", "1.2.0.9"
+            VALUE "ProductVersion", "1.3.0.1"
         END
     END
     BLOCK "VarFileInfo"

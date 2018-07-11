@@ -51,7 +51,7 @@ BEGIN_MESSAGE_MAP(CImageAnalyzerView, CScrollView)
 	ON_COMMAND(ID_ACTION_TRANSFORM_RAW, &CImageAnalyzerView::OnActionTransformRaw)
 	ON_COMMAND(ID_ACTION_BMP, &CImageAnalyzerView::OnActionBmp)
 	ON_COMMAND(ID_ACTION_UNPACK, &CImageAnalyzerView::OnActionUnpack)
-	ON_COMMAND(ID_ACTION_EVAL, &CImageAnalyzerView::OnActionEval)
+	ON_COMMAND(ID_ACTION_LOG, &CImageAnalyzerView::OnActionLOG)
 END_MESSAGE_MAP()
 
 // CImageAnalyzerView 建構/解構
@@ -1353,7 +1353,7 @@ void CImageAnalyzerView::OnActionBmp()
 	MessageBox(L"BMP files generated.");
 }
 
-void CImageAnalyzerView::OnActionEval()
+void CImageAnalyzerView::OnActionLOG()
 {
 	// TODO: 在此加入您的命令處理常式程式碼
 	BROWSEINFO   bi;
@@ -1372,16 +1372,18 @@ void CImageAnalyzerView::OnActionEval()
 
 	LPITEMIDLIST   pidl = SHBrowseForFolder(&bi);
 	TCHAR          szPathName[MAX_PATH];
-	if (NULL != pidl)
-	{
-		BOOL bRet = SHGetPathFromIDList(pidl, szPathName);
-		if (FALSE == bRet)
-			return;
-		AfxMessageBox(szPathName);
+
+	if (pidl == NULL) {
+		return;
+	}
+
+	BOOL bRet = SHGetPathFromIDList(pidl, szPathName);
+	if (FALSE == bRet) {
+		return;
 	}
 
 	GenerateTeacher_Dir(szPathName);
-	MessageBox(L".WBGain and .Lof files generated.");
+	MessageBox(L".WBGain and .Log files generated.");
 }
 
 void CImageAnalyzerView::OnActionUnpack()
@@ -1962,10 +1964,10 @@ int CImageAnalyzerView::GenerateTeacher(CString strJPGFile)
 	// Brightness Value                : 2.32
 	//                                   ^^^^
 	str = getValue(L"exif.txt", L"Brightness Value");
-	m_fBV =_ttof(str);
+	fBV =_ttof(str);
 	j = str.GetLength();
 
-	//
+	//////////////////////////////////////////////////////////////////////////////
 	// LOG file
 	//
 	str.Empty();
@@ -2034,13 +2036,13 @@ int CImageAnalyzerView::GenerateTeacher(CString strJPGFile)
 	str.Format(L"Sv=%.2f\n", fSV);
 	file.WriteString(str);
 
-	str.Format(L"Bv=%f\n", m_fBV);
+	str.Format(L"Bv=%f\n", fBV);
 	file.WriteString(str);
 
 	file.WriteString(L"BvFlash=100\n");
 	{
 		int luxidx = 0;
-		luxidx = 525 - (m_fBV + fSV + 2)*33.1; // This estimated formula is for 2P7
+		luxidx = 525 - (fBV + fSV + 2)*33.1; // This estimated formula is for 2P7
 		str.Format(L"LuxIndex=%d\n", luxidx);
 		file.WriteString(str);
 	}
@@ -2050,7 +2052,7 @@ int CImageAnalyzerView::GenerateTeacher(CString strJPGFile)
 
 	file.Close();
 
-	//
+	//////////////////////////////////////////////////////////////////////////////
 	// WBGain file
 	//
 	str.Empty();
@@ -2062,20 +2064,21 @@ int CImageAnalyzerView::GenerateTeacher(CString strJPGFile)
 	strWBGainFile += L"ain";
 
 	if (file.Open(strWBGainFile, CStdioFile::modeReadWrite | CStdioFile::typeText)) {
+		// File exists. Do nothing.
 		file.Close();
-		file.Remove(strWBGainFile);
+	} else {
+		file.Open(strWBGainFile, CStdioFile::modeWrite | CStdioFile::typeText | CStdioFile::modeCreate);
+
+		file.WriteString(L"[WhiteBalanceGain]\n");
+		str.Format(L"WBR=%.4f\n", (m_nAVRGg*1.0) / m_nAVRGr);
+		file.WriteString(str);
+		str.Format(L"WBB=%.4f\n", (m_nAVRGg*1.0) / m_nAVRGb);
+		file.WriteString(str);
+		file.WriteString(L"[AWBOptimize]\n");
+		file.WriteString(L"Mark=B\n");
+
+		file.Close();
 	}
-	file.Open(strWBGainFile, CStdioFile::modeWrite | CStdioFile::typeText | CStdioFile::modeCreate);
-	file.WriteString(L"[WhiteBalanceGain]\n");
-	str.Format(L"WBR=%.4f\n", (m_nAVRGg*1.0)/m_nAVRGr);
-	file.WriteString(str);
-	str.Format(L"WBB=%.4f\n", (m_nAVRGg*1.0)/m_nAVRGb);
-	file.WriteString(str);
-	file.WriteString(L"[AWBOptimize]\n");
-	file.WriteString(L"Mark=B\n");
-
-	file.Close();
-
 	return 0;
 }
 
