@@ -2002,6 +2002,21 @@ int CImageAnalyzerView::GenerateTeacher(CString strJPGFile)
 		file.WriteString(L"TopLeftColor=\n");
 		file.WriteString(L"PixelMaxValue=\n");
 	}
+
+	if ((m_nRAWDlg_format == bayer_grbg_10bit_packed) ||
+		(m_nRAWDlg_format == bayer_gbrg_10bit_packed) )
+	{
+		file.WriteString(L"PackedType=9\n");
+	}
+	else if ((m_nRAWDlg_format == bayer_grbg_10bit_unpacked) ||
+		     (m_nRAWDlg_format == bayer_gbrg_10bit_unpacked))
+	{
+		file.WriteString(L"PackedType=5\n");
+	}
+	else {
+		file.WriteString(L"PackedType=\n");
+	}
+
 	file.WriteString(L"Offset=0\n");
 	file.WriteString(L"[SHOT_INFO]\n");
 	
@@ -2023,6 +2038,12 @@ int CImageAnalyzerView::GenerateTeacher(CString strJPGFile)
 	file.WriteString(str);
 
 	file.WriteString(L"BvFlash=100\n");
+	{
+		int luxidx = 0;
+		luxidx = 525 - (m_fBV + fSV + 2)*33.1; // This estimated formula is for 2P7
+		str.Format(L"LuxIndex=%d\n", luxidx);
+		file.WriteString(str);
+	}
 	file.WriteString(L"[TEACHER_INFO]\n");
 	file.WriteString(L"CameraWBR=1.00\n");
 	file.WriteString(L"CameraWBB=1.00\n");
