@@ -18,12 +18,9 @@ private:
 	static int     s_nBrightness; /* 24.8 fixed point */
 	static int     s_nSwaprb;
 
-	int qc_imag_bay2rgb10(unsigned char *bay, int bay_line, unsigned char *rgb, int rgb_line, unsigned int columns, unsigned int rows, int bpp);
-	void qc_imag_writergb(void *addr, int bpp, unsigned char r, unsigned char g, unsigned char b);
-	void qc_imag_writergb10(void *addr, int bpp, unsigned short r, unsigned short g, unsigned short b);
-	void qc_imag_bay2rgb_cottnoip10(unsigned short *bay, int bay_line, unsigned char *rgb, int rgb_line, int columns, int rows, int bpp);
-
-//	void WriteToBMP(unsigned char *pRGB, int nWidth, int nHeight, char *fname);
+	void writergb(void *addr, int bpp, unsigned char r, unsigned char g, unsigned char b);
+	void writergb_10(void *addr, int bpp, unsigned short r, unsigned short g, unsigned short b);
+	void bay2rgb_10(unsigned short *bay, int bay_line, unsigned char *rgb, int rgb_line, int columns, int rows, int bpp);
 	int WriteToBMP(CString strFileName, int nOverwrite = 0);
 
 protected:

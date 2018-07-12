@@ -1,14 +1,7 @@
 #include "stdafx.h"
 #include "Img_RAW.h"
 
-#define DEFAULT_BGR   0
 #define DETECT_BADVAL 1
-#define MAX(a,b)	((a)>(b)?(a):(b))
-#define MIN(a,b)	((a)<(b)?(a):(b))
-#define MAX3(a,b,c)	(MAX(a,MAX(b,c)))
-#define MIN3(a,b,c)	(MIN(a,MIN(b,c)))
-#define CLIP(a,low,high) MAX((low),MIN((high),(a)))
-#define SIZE(x)		(sizeof(x)/sizeof((x)[0]))
 
 int Img_RAW::s_nBrightness = 256; /* 24.8 fixed point */
 int Img_RAW::s_nSwaprb     = 0;
@@ -163,9 +156,6 @@ unsigned char * Img_RAW::GetUnpackedBuffer()
 
 unsigned char * Img_RAW::GetRGB()
 {
-	// 
-	// BGR BGR BGR BGR BGR BGR BGR BGR
-	//
 	return m_pRGB;
 }
 
@@ -191,7 +181,6 @@ int Img_RAW::WriteToBMP(CString strFileName, int nOverwrite)
 		// The file does not exist. Create it.
 		if(!file.Open(strFileName, CFile::modeCreate | CFile::modeReadWrite) )
 		{
-			// Failed to create the file
 			return nError;
 		}
 	}
@@ -331,7 +320,6 @@ int Img_RAW::WriteToBMP(CString strFileName, int nOverwrite)
 	{
 		int x, y_src, y_dst;
 
-		// Write the 1st source line to the last destination line
 		for (y_src = 0, y_dst = m_nHeight - 1; y_src<m_nHeight; y_src++, y_dst--) {
 			for (x = 0; x<img_line_bytes; x++) {
 				p_img_with_padding[y_dst*total_line_bytes + x] = m_pRGB[y_src*img_line_bytes + x];
@@ -363,7 +351,7 @@ int Img_RAW::RGB_Interpolation(unsigned char *pRAW, int nWidth, int nHeight, uns
 
 	for (dst_y = 0; dst_y<nHeight; dst_y++) {
 		for (dst_x = 0; dst_x<nWidth; dst_x++) {
-			int v = ptr[0] | ptr[1] << 8; // The expected format is little-endian 
+			int v = ptr[0] | ptr[1] << 8;
 			v *= s_nBrightness;
 			v >>= 8;
 			if (v < 0) v = 0;
@@ -375,19 +363,8 @@ int Img_RAW::RGB_Interpolation(unsigned char *pRAW, int nWidth, int nHeight, uns
 		}
 	}
 
-	//
-	// qc_imag_bay2rgb10
-	//
-	// Bayer Patter             Interpolated
-	// Assume GRBG              RGB
-	// +----+----+----+----+    
-	// | G0 | R1 | G2 | R3 |    
-	// +----I1---I2---I3---+    I1 = R1 + G0 + B4
-	// | B4 | G5 | B6 | G7 |    I4 = R8 + G5 + B4
-	// +----I4---I5---I6---+
-	//
 	buf = (unsigned char *)malloc(nWidth*nHeight*3);
-    qc_imag_bay2rgb10(pRAW, src_stride, buf, nWidth*3, nWidth, nHeight, 3);
+	bay2rgb_10((unsigned short *)pRAW, nWidth, buf, nWidth*3, nWidth, nHeight, 3);
 
 	if ((m_nFormat == bayer_grbg_10bit_packed) || (m_nFormat == bayer_grbg_10bit_unpacked))
 	{
@@ -400,129 +377,43 @@ int Img_RAW::RGB_Interpolation(unsigned char *pRAW, int nWidth, int nHeight, uns
 	for (dst_y = 0; dst_y<nHeight; dst_y++) {
 		for (dst_x = 0; dst_x<nWidth; dst_x++) {
 			ptr = buf + nWidth * 3 * dst_y + dst_x * 3;
-			// The order of bytes in BMP file is BGR
-			pRGB[dst_y*rgb_stride + 3 * dst_x + 0] = s_nSwaprb ? ptr[2] : ptr[0]; // B
-			pRGB[dst_y*rgb_stride + 3 * dst_x + 1] = ptr[1];                      // G
-			pRGB[dst_y*rgb_stride + 3 * dst_x + 2] = s_nSwaprb ? ptr[0] : ptr[2]; // R
+			pRGB[dst_y*rgb_stride + 3 * dst_x + 0] = s_nSwaprb ? ptr[2] : ptr[0];
+			pRGB[dst_y*rgb_stride + 3 * dst_x + 1] = ptr[1]; 
+			pRGB[dst_y*rgb_stride + 3 * dst_x + 2] = s_nSwaprb ? ptr[0] : ptr[2];
 		}
 	}
 	free(buf);
 	return 0;
 }
 
-/* bay_line = image stride in the RAW data in bytes */
-int Img_RAW::qc_imag_bay2rgb10(
-	unsigned char *bay, int bay_line,
-	unsigned char *rgb, int rgb_line,
-	unsigned int columns, unsigned int rows, int bpp
-)
-{
-#if DETECT_BADVAL
-	int maxval = 0;
-	unsigned int x, y;
-#endif
-
-	if ((bay_line & 1)) {
-		//printf("qc_imag_bay2rgb10: bayer stride must be even\n");
-		return -1;
-	}
-	bay_line >>= 1;
-#if DETECT_BADVAL
-	for (y = 0; y<rows; y++) for (x = 0; x<columns; x++) {
-		maxval = MAX(maxval, ((unsigned short *)bay)[bay_line*y + x]);
-	}
-	if (maxval >= (1 << 10)) printf("Warning: qc_imag_bay2rgb10: detected illegal pixel value)\n");
-#endif
-	qc_imag_bay2rgb_cottnoip10((unsigned short *)bay, bay_line, rgb, rgb_line, columns, rows, bpp);
-
-	return 0;
-}
-
-/* Write RGB pixel value to the given address.
- * addr = memory address, to which the pixel is written
- * bpp = number of bytes in the pixel (should be 3 or 4)
- * r, g, b = pixel component values to be written (red, green, blue)
- * Looks horribly slow but the compiler should be able to inline optimize it.
- */
-inline void Img_RAW::qc_imag_writergb(
+inline void Img_RAW::writergb(
 	void *addr, int bpp,
 	unsigned char r, unsigned char g, unsigned char b)
 {
-	if (DEFAULT_BGR) {
-		/* Blue is first (in the lowest memory address */
-		if (bpp == 4) {
-#if defined(__LITTLE_ENDIAN)
-			*(unsigned int *)addr =
-				(unsigned int)r << 16 |
-				(unsigned int)g << 8 |
-				(unsigned int)b;
-#elif defined(__BIG_ENDIAN)
-			*(unsigned int *)addr =
-				(unsigned int)r << 8 |
-				(unsigned int)g << 16 |
-				(unsigned int)b << 24;
-#else
-			unsigned char *addr2 = (unsigned char *)addr;
-			addr2[0] = b;
-			addr2[1] = g;
-			addr2[2] = r;
-			addr2[3] = 0;
-#endif
-		}
-		else {
-			unsigned char *addr2 = (unsigned char *)addr;
-			addr2[0] = b;
-			addr2[1] = g;
-			addr2[2] = r;
-		}
+	if (bpp == 4) {
+
+		unsigned char *addr2 = (unsigned char *)addr;
+		addr2[0] = r;
+		addr2[1] = g;
+		addr2[2] = b;
+		addr2[3] = 0;
 	}
 	else {
-		/* Red is first (in the lowest memory address */
-		if (bpp == 4) {
-#if defined(__LITTLE_ENDIAN)
-			*(unsigned int *)addr =
-				(unsigned int)b << 16 |
-				(unsigned int)g << 8 |
-				(unsigned int)r;
-#elif defined(__BIG_ENDIAN)
-			*(unsigned int *)addr =
-				(unsigned int)b << 8 |
-				(unsigned int)g << 16 |
-				(unsigned int)r << 24;
-#else
-			unsigned char *addr2 = (unsigned char *)addr;
-			addr2[0] = r;
-			addr2[1] = g;
-			addr2[2] = b;
-			addr2[3] = 0;
-#endif
-		}
-		else {
-			unsigned char *addr2 = (unsigned char *)addr;
-			addr2[0] = r;
-			addr2[1] = g;
-			addr2[2] = b;
-		}
+		unsigned char *addr2 = (unsigned char *)addr;
+		addr2[0] = r;
+		addr2[1] = g;
+		addr2[2] = b;
 	}
 }
 
-/* Assume r, g, and b are 10-bit quantities */
-inline void Img_RAW::qc_imag_writergb10(
+inline void Img_RAW::writergb_10(
 	void *addr, int bpp,
 	unsigned short r, unsigned short g, unsigned short b)
 {
-	qc_imag_writergb(addr, bpp, r >> 2, g >> 2, b >> 2);
+	writergb(addr, bpp, r >> 2, g >> 2, b >> 2);
 }
 
-/* Convert bayer image to RGB image using 0.5 displaced nearest neighbor.
- * bay = points to the bayer image data (upper left pixel is green)
- * bay_line = short ints between the beginnings of two consecutive rows
- * rgb = points to the rgb image data that is written
- * rgb_line = bytes between the beginnings of two consecutive rows
- * columns, rows = bayer image size (both must be even)
- * bpp = number of bytes in each pixel in the RGB image (should be 3 or 4)
- */
-inline void Img_RAW::qc_imag_bay2rgb_cottnoip10(
+inline void Img_RAW::bay2rgb_10(
 	unsigned short *bay, int bay_line,
 	unsigned char *rgb, int rgb_line,
 	int columns, int rows, int bpp)
@@ -543,37 +434,37 @@ inline void Img_RAW::qc_imag_bay2rgb_cottnoip10(
 		cur_rgb = rgb;
 		columns = total_columns;
 		do {
-			qc_imag_writergb10(cur_rgb + 0, bpp, cur_bay[1], cur_bay[0], cur_bay[bay_line]);
-			qc_imag_writergb10(cur_rgb + bpp, bpp, cur_bay[1], cur_bay[2], cur_bay[bay_line + 2]);
-			qc_imag_writergb10(cur_rgb + rgb_line, bpp, cur_bay[bay_line2 + 1], cur_bay[bay_line + 1], cur_bay[bay_line]);
-			qc_imag_writergb10(cur_rgb + rgb_line + bpp, bpp, cur_bay[bay_line2 + 1], cur_bay[bay_line + 1], cur_bay[bay_line + 2]);
+			writergb_10(cur_rgb + 0, bpp, cur_bay[1], cur_bay[0], cur_bay[bay_line]);
+			writergb_10(cur_rgb + bpp, bpp, cur_bay[1], cur_bay[2], cur_bay[bay_line + 2]);
+			writergb_10(cur_rgb + rgb_line, bpp, cur_bay[bay_line2 + 1], cur_bay[bay_line + 1], cur_bay[bay_line]);
+			writergb_10(cur_rgb + rgb_line + bpp, bpp, cur_bay[bay_line2 + 1], cur_bay[bay_line + 1], cur_bay[bay_line + 2]);
 			cur_bay += 2;
 			cur_rgb += 2 * bpp;
 		} while (--columns);
-		qc_imag_writergb10(cur_rgb + 0, bpp, cur_bay[1], cur_bay[0], cur_bay[bay_line]);
-		qc_imag_writergb10(cur_rgb + bpp, bpp, cur_bay[1], cur_bay[bay_line + 1], cur_bay[bay_line]);
-		qc_imag_writergb10(cur_rgb + rgb_line, bpp, cur_bay[bay_line2 + 1], cur_bay[bay_line + 1], cur_bay[bay_line]);
-		qc_imag_writergb10(cur_rgb + rgb_line + bpp, bpp, cur_bay[bay_line2 + 1], cur_bay[bay_line + 1], cur_bay[bay_line]);
+		writergb_10(cur_rgb + 0, bpp, cur_bay[1], cur_bay[0], cur_bay[bay_line]);
+		writergb_10(cur_rgb + bpp, bpp, cur_bay[1], cur_bay[bay_line + 1], cur_bay[bay_line]);
+		writergb_10(cur_rgb + rgb_line, bpp, cur_bay[bay_line2 + 1], cur_bay[bay_line + 1], cur_bay[bay_line]);
+		writergb_10(cur_rgb + rgb_line + bpp, bpp, cur_bay[bay_line2 + 1], cur_bay[bay_line + 1], cur_bay[bay_line]);
 		bay += bay_line2;
 		rgb += rgb_line2;
 	} while (--rows);
-	/* Last scanline handled here as special case */
+	
 	cur_bay = bay;
 	cur_rgb = rgb;
 	columns = total_columns;
 	do {
-		qc_imag_writergb10(cur_rgb + 0, bpp, cur_bay[1], cur_bay[0], cur_bay[bay_line]);
-		qc_imag_writergb10(cur_rgb + bpp, bpp, cur_bay[1], cur_bay[2], cur_bay[bay_line + 2]);
-		qc_imag_writergb10(cur_rgb + rgb_line, bpp, cur_bay[1], cur_bay[bay_line + 1], cur_bay[bay_line]);
-		qc_imag_writergb10(cur_rgb + rgb_line + bpp, bpp, cur_bay[1], cur_bay[bay_line + 1], cur_bay[bay_line + 2]);
+		writergb_10(cur_rgb + 0, bpp, cur_bay[1], cur_bay[0], cur_bay[bay_line]);
+		writergb_10(cur_rgb + bpp, bpp, cur_bay[1], cur_bay[2], cur_bay[bay_line + 2]);
+		writergb_10(cur_rgb + rgb_line, bpp, cur_bay[1], cur_bay[bay_line + 1], cur_bay[bay_line]);
+		writergb_10(cur_rgb + rgb_line + bpp, bpp, cur_bay[1], cur_bay[bay_line + 1], cur_bay[bay_line + 2]);
 		cur_bay += 2;
 		cur_rgb += 2 * bpp;
 	} while (--columns);
 	/* Last lower-right pixel is handled here as special case */
-	qc_imag_writergb10(cur_rgb + 0, bpp, cur_bay[1], cur_bay[0], cur_bay[bay_line]);
-	qc_imag_writergb10(cur_rgb + bpp, bpp, cur_bay[1], cur_bay[bay_line + 1], cur_bay[bay_line]);
-	qc_imag_writergb10(cur_rgb + rgb_line, bpp, cur_bay[1], cur_bay[bay_line + 1], cur_bay[bay_line]);
-	qc_imag_writergb10(cur_rgb + rgb_line + bpp, bpp, cur_bay[1], cur_bay[bay_line + 1], cur_bay[bay_line]);
+	writergb_10(cur_rgb + 0, bpp, cur_bay[1], cur_bay[0], cur_bay[bay_line]);
+	writergb_10(cur_rgb + bpp, bpp, cur_bay[1], cur_bay[bay_line + 1], cur_bay[bay_line]);
+	writergb_10(cur_rgb + rgb_line, bpp, cur_bay[1], cur_bay[bay_line + 1], cur_bay[bay_line]);
+	writergb_10(cur_rgb + rgb_line + bpp, bpp, cur_bay[1], cur_bay[bay_line + 1], cur_bay[bay_line]);
 }
 
 unsigned int Img_RAW::GetUnpackedBufferSize()
@@ -640,5 +531,3 @@ int Img_RAW::RGBtoRAW(int nFormat)
 
 	return 0;
 }
-
-
