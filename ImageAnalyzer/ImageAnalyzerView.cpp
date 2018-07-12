@@ -148,7 +148,7 @@ void CImageAnalyzerView::OnDraw(CDC* pDC)
 	CPoint         point;
 	CPen          *pPen;
 	CPen           pen(0, 1, COLORREF(0x00FF0000));
-	int            i;
+	int            i, j;
 
 	point = GetScrollPosition();
 
@@ -184,22 +184,27 @@ void CImageAnalyzerView::OnDraw(CDC* pDC)
 	//
 	// Measuring Calibration Data
 	//
-	if (m_nAction == Action_MeasuringCalibrationData) {
+	if ((m_nAction == Action_MeasuringCalibrationData) && (m_nCalibrationCnt>0)) {
+		int nCnt = m_nCalibrationCnt - 1;
 		if (m_nVertex == 1) {
-			pDC->SetPixel(m_MCC_Vertices[m_nCalibrationCnt][0].x*m_nZoomPercent / 100,
-				m_MCC_Vertices[m_nCalibrationCnt][0].y*m_nZoomPercent / 100,
+			pDC->SetPixel(m_MCC_Vertices[nCnt][0].x*m_nZoomPercent / 100,
+				m_MCC_Vertices[nCnt][0].y*m_nZoomPercent / 100,
 				RGB(0, 0, 255));
 		}
 		pPen = pDC->SelectObject(&pen);
 		for (i = 1; i < m_nVertex; i++) {
-			pDC->MoveTo(m_MCC_Vertices[m_nCalibrationCnt][i - 1].x*m_nZoomPercent / 100, m_MCC_Vertices[m_nCalibrationCnt][i - 1].y*m_nZoomPercent / 100);
-			pDC->LineTo(m_MCC_Vertices[m_nCalibrationCnt][i].x*m_nZoomPercent / 100, m_MCC_Vertices[m_nCalibrationCnt][i].y*m_nZoomPercent / 100);
+			pDC->MoveTo(m_MCC_Vertices[nCnt][i - 1].x*m_nZoomPercent / 100, m_MCC_Vertices[nCnt][i - 1].y*m_nZoomPercent / 100);
+			pDC->LineTo(m_MCC_Vertices[nCnt][i].x*m_nZoomPercent / 100, m_MCC_Vertices[nCnt][i].y*m_nZoomPercent / 100);
 		}
 		if (m_nVertex == 4) {
-			pDC->MoveTo(m_MCC_Vertices[m_nCalibrationCnt][3].x*m_nZoomPercent / 100, m_MCC_Vertices[m_nCalibrationCnt][3].y*m_nZoomPercent / 100);
-			pDC->LineTo(m_MCC_Vertices[m_nCalibrationCnt][0].x*m_nZoomPercent / 100, m_MCC_Vertices[m_nCalibrationCnt][0].y*m_nZoomPercent / 100);
+			pDC->MoveTo(m_MCC_Vertices[nCnt][3].x*m_nZoomPercent / 100, m_MCC_Vertices[nCnt][3].y*m_nZoomPercent / 100);
+			pDC->LineTo(m_MCC_Vertices[nCnt][0].x*m_nZoomPercent / 100, m_MCC_Vertices[nCnt][0].y*m_nZoomPercent / 100);
 		}
 
+		pDC->TextOut(point.x + 5, point.y + 5, L"Hint: (N)ext File, (S)ave Result, (R)eselect Vertix ");
+		for(i=0;i<m_nCalibrationCnt;i++){
+			pDC->TextOut(point.x + 5, point.y + 20 + i*15, m_strILL_Name[i]);
+		}
 		pDC->SelectObject(pPen);
 	}
 
@@ -339,6 +344,7 @@ void CImageAnalyzerView::OnFileOpen()
 		}
 		m_strInputFileName = dlg.GetPathName();
 		m_strILL_Name[m_nCalibrationCnt] = m_strInputFileName;
+		m_nCalibrationCnt++;
 	}
 	else if (m_nAction == Action_MeasuringTeacherData) {
 		CFileDialog dlg(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, szFileFilters_RAW);
@@ -472,10 +478,10 @@ int CImageAnalyzerView::MeasureCalibrationData_FileOpen()
 		return 0;
 	}
 
-	m_nCalibrationCnt++;
 	m_nVertex = 0;
 	m_strInputFileName = dlg.GetPathName();
 	m_strILL_Name[m_nCalibrationCnt] = m_strInputFileName;
+	m_nCalibrationCnt++;
 
 	RAW_to_BMP(m_strInputFileName, m_strBMPFileName);
 	LoadBMPFile(m_strBMPFileName);
@@ -501,6 +507,8 @@ void CImageAnalyzerView::OnSize(UINT nType, int cx, int cy)
 	// TODO: 在此加入您的訊息處理常式程式碼
 	m_nViewWidth = cx;
 	m_nViewHeight = cy;
+
+	Invalidate();
 }
 
 
@@ -1020,6 +1028,10 @@ void CImageAnalyzerView::OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags)
 		}
 		else if (m_nAction == Action_MeasuringCalibrationData) {
 			SaveCalibration();
+			m_nCalibrationCnt = 0;
+			m_nVertex = 0;
+			Invalidate();
+
 		}
 		else if (m_nAction == Action_MeasuringTeacherData) {
 			CString strJPGFile = m_strInputFileName;
@@ -1094,15 +1106,18 @@ int CImageAnalyzerView::SaveCalibration()
 		strPWD.GetBuffer()[i] = m_strInputFileName[i];
 	}
 
-	if (!mmFile.Open(strPWD + L"\\MakeMatrix.bat", nOpenMode)) {
-		if (!mmFile.Open(strPWD + L"\\MakeMatrix.bat", CStdioFile::modeCreate | nOpenMode)) {
+	if (mmFile.Open(strPWD + L"\\MakeMatrix.bat", nOpenMode)) {
+		mmFile.Close();
+		mmFile.Remove(strPWD + L"\\MakeMatrix.bat");
+	}
+
+	if (!mmFile.Open(strPWD + L"\\MakeMatrix.bat", CStdioFile::modeCreate | nOpenMode)) {
 			return -1;
-		}
 	}
 
 	strLine.Format(L"rem [edit] the definition of illuminants\n");
 	mmFile.WriteString(strLine);
-	for (i = 0; i < m_nCalibrationCnt + 1; i++) {
+	for (i = 0; i < m_nCalibrationCnt; i++) {
 		CString strILL;
 		strILL.Empty();
 		strILL.GetBufferSetLength(m_strILL_Name[i].GetLength());
@@ -1128,7 +1143,7 @@ int CImageAnalyzerView::SaveCalibration()
 	mmFile.WriteString(L"\n");
 	mmFile.WriteString(L"set CHARTIMAGE_FOLDER=forMakeMatrix\\%TARGET%\\%CAMERA%_%SERIAL%\n");
 	mmFile.WriteString(L"rem [edit] raw image file path of Macbeth color chart (input files)\n");
-	for (i = 0; i < m_nCalibrationCnt + 1; i++) {
+	for (i = 0; i < m_nCalibrationCnt; i++) {
 		CString strILL_RAW;
 		strILL_RAW.Empty();
 		strILL_RAW.GetBufferSetLength(m_strILL_Name[i].GetLength());
@@ -1159,7 +1174,7 @@ int CImageAnalyzerView::SaveCalibration()
 	mmFile.WriteString(L"rem v4(x4,y4)  v3(x3,y3)\n");
 	mmFile.WriteString(L"rem\n");
 	mmFile.WriteString(L"rem CHARTAREA_SAMPLE = x1, y1, x2, y2, x3, y3, x4, y4\n");
-	for (i = 0; i < m_nCalibrationCnt + 1; i++) {
+	for (i = 0; i < m_nCalibrationCnt; i++) {
 		strLine.Format(L"set CHARTAREA_ILL%03d=%d,%d,%d,%d,%d,%d,%d,%d\n",
 			i+1,
 			m_MCC_Vertices[i][0].x,
@@ -1181,6 +1196,7 @@ int CImageAnalyzerView::SaveCalibration()
 void CImageAnalyzerView::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 {
 	// TODO: 在此加入您的訊息處理常式程式碼和 (或) 呼叫預設值
+	Invalidate();
 	CScrollView::OnHScroll(nSBCode, nPos, pScrollBar);
 }
 
@@ -1188,7 +1204,7 @@ void CImageAnalyzerView::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollB
 void CImageAnalyzerView::OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 {
 	// TODO: 在此加入您的訊息處理常式程式碼和 (或) 呼叫預設值
-	//Invalidate();
+	Invalidate();
 	CScrollView::OnVScroll(nSBCode, nPos, pScrollBar);
 }
 
@@ -1648,9 +1664,9 @@ int CImageAnalyzerView::MeasureCalibrationData(CPoint point)
 	CPoint scrollPosition = GetScrollPosition();
 
 	if (m_nVertex < 4) {
-		int i;
-		m_MCC_Vertices[m_nCalibrationCnt][m_nVertex].x = (point.x + scrollPosition.x)*100/m_nZoomPercent;
-		m_MCC_Vertices[m_nCalibrationCnt][m_nVertex].y = (point.y + scrollPosition.y)*100/m_nZoomPercent;
+		int nIdx = m_nCalibrationCnt - 1;
+		m_MCC_Vertices[nIdx][m_nVertex].x = (point.x + scrollPosition.x)*100/m_nZoomPercent;
+		m_MCC_Vertices[nIdx][m_nVertex].y = (point.y + scrollPosition.y)*100/m_nZoomPercent;
 		m_nVertex++;
 	}
 
@@ -2042,10 +2058,13 @@ int CImageAnalyzerView::GenerateTeacher(CString strJPGFile)
 	file.WriteString(L"BvFlash=100\n");
 	{
 		int luxidx = 0;
-		luxidx = 525 - (fBV + fSV + 2)*33.1; // This estimated formula is for 2P7
+		luxidx = 255.0 - 175.0*fBV/7.0; // This estimated formula is for 2P7
 		str.Format(L"LuxIndex=%d\n", luxidx);
 		file.WriteString(str);
 	}
+	file.WriteString(L"WBR=\n");
+	file.WriteString(L"WBB=\n");
+
 	file.WriteString(L"[TEACHER_INFO]\n");
 	file.WriteString(L"CameraWBR=1.00\n");
 	file.WriteString(L"CameraWBB=1.00\n");
